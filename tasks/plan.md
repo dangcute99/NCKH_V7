@@ -1,6 +1,6 @@
 # Implementation Plan: Linux nhúng trên Zynq-7000 cho modem vệ tinh (PetaLinux 2023.2)
 
-Spec: [README.md](../README.md). Quy trình chi tiết: [docs/quy-trinh-xay-dung.md](../docs/quy-trinh-xay-dung.md). Task list: [todo.md](todo.md).
+Spec: [README.md](../README.md). Quy trình chi tiết: [docs/quy-trinh-xay-dung.md](../docs/quy-trinh-xay-dung.md). Task list: [todo.md](todo.md). Nhật ký: [nhat-ky.md](nhat-ky.md).
 
 ## Overview
 
