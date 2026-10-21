@@ -117,38 +117,22 @@ NCKH/
 
 ## 5. Quy trình triển khai (tóm tắt)
 
-Chi tiết, kết quả mong đợi và cách xử lý lỗi của từng bước: [docs/quy-trinh-xay-dung.md](docs/quy-trinh-xay-dung.md).
+Bảng dưới chỉ ghi lệnh chính. Giá trị cấu hình cụ thể, PetaLinux làm gì bên dưới, cách kiểm tra và lỗi thường gặp của từng bước chỉ nằm ở **một nơi**: [docs/quy-trinh-xay-dung.md](docs/quy-trinh-xay-dung.md), mục B0–B9.
 
-### Bước 0 – Chuẩn bị máy build
-- Ubuntu 22.04, ≥ 8 GB RAM, ≥ 100 GB trống cho PetaLinux + 1 project (Vivado cần thêm ~70 GB).
-- Cài gói host theo UG1144 (AMD cung cấp script `plnx-env-setup.sh`).
-- Tải `petalinux-v2023.2-*-installer.run` từ trang AMD (cần tài khoản), cài **không dùng root**:
-  ```sh
-  ./petalinux-v2023.2-*-installer.run -d ~/petalinux/2023.2
-  source ~/petalinux/2023.2/settings.sh
-  ```
+| Bước | Việc | Lệnh chính | Chi tiết |
+|------|------|------------|----------|
+| 0 | Cài PetaLinux 2023.2 | `./petalinux-v2023.2-*-installer.run -d ~/petalinux/2023.2`, rồi `source ~/petalinux/2023.2/settings.sh` | B0 |
+| 1 | Thiết kế phần cứng | Vivado → Export Hardware (kèm bitstream) → `hw/e316/system.xsa` | B1 |
+| 2 | Tạo project, nhập `.xsa` | trong `plnx/`: `petalinux-create -t project --template zynq -n e316`; trong `plnx/e316/`: `petalinux-config --get-hw-description=../../hw/e316/system.xsa` | B2 |
+| 3 | Cấu hình hệ thống | `petalinux-config`: console, rootfs EXT4, bootargs, user layer `meta-nckh` | B3 |
+| 4 | U-Boot | sinh tự động từ `.xsa`; chỉnh nếu cần: `petalinux-config -c u-boot` | B4 |
+| 5 | Kernel | fragment `meta-nckh/recipes-kernel/linux/linux-xlnx/nckh.cfg` (§5.1); chỉnh tương tác: `petalinux-config -c kernel` | B5 |
+| 6 | Device Tree | chỉ sửa `project-spec/meta-user/recipes-bsp/device-tree/files/system-user.dtsi` (§5.2) | B6 |
+| 7 | Rootfs, driver, ứng dụng | `petalinux-config -c rootfs` | B7 |
+| 8 | Build và đóng gói | `petalinux-build`; `petalinux-package --boot --fsbl images/linux/zynq_fsbl.elf --fpga images/linux/system.bit --u-boot --force`; `petalinux-package --wic` | B8 |
+| 9 | Triển khai | ghi `petalinux-sdimage.wic` ra thẻ SD; hoặc `petalinux-boot --jtag` / `petalinux-boot --qemu --kernel` | B9 |
 
-### Bước 1 – Thiết kế phần cứng (Vivado)
-Block design `ZYNQ7 Processing System` theo schematic E316 (DDR, MIO, clock), thêm IP modem trên PL nếu có → Generate Bitstream → Export Hardware (kèm bitstream) → `hw/e316/system.xsa`.
-
-### Bước 2 – Tạo project và nhập phần cứng
-```sh
-cd plnx
-petalinux-create -t project --template zynq -n e316
-cd e316
-petalinux-config --get-hw-description=../../hw/e316/system.xsa
-```
-Trong menu cấu hình:
-- `Subsystem AUTO Hardware Settings → Serial Settings`: chọn UART console.
-- `Image Packaging Configuration → Root filesystem type`: **EXT4 (SD/eMMC/SATA/USB)**, device node `/dev/mmcblk0p2`.
-- `DTG Settings → Kernel Bootargs`: thêm `uio_pdrv_genirq.of_id=generic-uio`.
-- `Yocto Settings → User Layers`: thêm `${PROOT}/../../meta-nckh`.
-
-### Bước 3 – Bootloader (FSBL, U-Boot)
-FSBL và cấu hình U-Boot được sinh tự động từ `.xsa`. Chỉnh thêm nếu cần: `petalinux-config -c u-boot`.
-
-### Bước 4 – Linux Kernel
-Cấu hình gốc `xilinx_zynq_defconfig` + fragment `meta-nckh/recipes-kernel/linux/linux-xlnx/nckh.cfg`:
+### 5.1 Kernel fragment cho modem (`nckh.cfg`)
 
 | Nhóm | Tùy chọn | Mục đích |
 |------|----------|----------|
@@ -159,10 +143,9 @@ Cấu hình gốc `xilinx_zynq_defconfig` + fragment `meta-nckh/recipes-kernel/l
 | Giám sát | `XILINX_XADC`, `IIO` | nhiệt độ, điện áp; nền cho driver RF dùng IIO (vd. AD9361) |
 | Thời gian thực | `PREEMPT`, `HIGH_RES_TIMERS` | giảm độ trễ cho vòng điều khiển modem |
 
-Chỉnh tương tác: `petalinux-config -c kernel`.
+### 5.2 Device Tree cho IP modem
 
-### Bước 5 – Device Tree
-PetaLinux sinh `system-top.dts`, `pcw.dtsi`, `pl.dtsi` trong `components/plnx_workspace/device-tree/` — **không sửa tay**. Mọi tùy biến đặt trong `project-spec/meta-user/recipes-bsp/device-tree/files/system-user.dtsi`:
+PetaLinux sinh `system-top.dts`, `pcw.dtsi`, `pl.dtsi` trong `components/` — **không sửa tay**. Ví dụ gán driver cho IP modem trong `system-user.dtsi`:
 
 ```dts
 &modem_ctrl_0 {                       /* label do pl.dtsi sinh ra theo tên IP trong Vivado */
@@ -171,10 +154,7 @@ PetaLinux sinh `system-top.dts`, `pcw.dtsi`, `pl.dtsi` trong `components/plnx_wo
 /* hoặc: compatible = "generic-uio";  để truy cập trực tiếp từ user space qua /dev/uioN */
 ```
 
-### Bước 6 – Root File System
-`petalinux-config -c rootfs`, bật: dropbear (SSH), ethtool, iperf3, i2c-tools, spitools, mtd-utils, memtester, `modem-regs`, `zynq-selftest`. Gói không có sẵn trong menu thì khai báo thêm trong `project-spec/meta-user/conf/user-rootfsconfig`.
-
-### Bước 7 – Trình điều khiển thiết bị
+### 5.3 Trình điều khiển thiết bị
 
 **Driver có sẵn trong kernel**, chỉ cần bật và khai báo trong DT:
 
@@ -199,28 +179,6 @@ PetaLinux sinh `system-top.dts`, `pcw.dtsi`, `pl.dtsi` trong `components/plnx_wo
 |-------------------------|--------------|
 | `generic-uio` | thử nghiệm nhanh, logic điều khiển nằm hoàn toàn ở user space |
 | driver kernel (`modem-regs`) | cần xử lý ngắt/DMA trong kernel, kiểm soát truy cập, API ổn định cho ứng dụng |
-
-### Bước 8 – Build và tạo image
-```sh
-petalinux-build
-petalinux-package --boot --fsbl images/linux/zynq_fsbl.elf --fpga images/linux/system.bit --u-boot --force
-petalinux-package --wic
-```
-Đầu ra trong `images/linux/`:
-
-| File | Nội dung |
-|------|----------|
-| `BOOT.BIN` | FSBL + bitstream + U-Boot (+ DTB cho U-Boot) |
-| `boot.scr` | script U-Boot: nạp `image.ub` |
-| `image.ub` | ảnh FIT: kernel + `system.dtb` |
-| `rootfs.ext4` | root file system |
-| `petalinux-sdimage.wic` | ảnh thẻ SD: p1 FAT (`BOOT.BIN`, `boot.scr`, `image.ub`), p2 ext4 (rootfs) |
-
-### Bước 9 – Triển khai lên board
-- **Thẻ SD:** ghi `petalinux-sdimage.wic` ra thẻ (`dd` hoặc `bmaptool`), đặt boot mode **SD**, cắm UART (115200 8N1), cấp nguồn.
-- **JTAG** (khi bring-up, chưa tin thẻ SD): `petalinux-boot --jtag --kernel --fpga` qua `hw_server` của Vivado.
-- **QSPI** (tùy chọn): ghi `BOOT.BIN` bằng `flashcp` trên board hoặc `program_flash`, đổi boot mode sang QSPI.
-- **QEMU** (không cần board): `petalinux-boot --qemu --kernel`. QEMU mô phỏng phần PS, **không mô phỏng PL**.
 
 ## 6. Kiểm thử
 

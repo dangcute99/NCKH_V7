@@ -159,7 +159,7 @@ BOOT.BIN (bootgen)                         petalinux-sdimage.wic
 
 | Cách | Lệnh | Dùng khi |
 |------|------|----------|
-| Thẻ SD | `sudo dd if=images/linux/petalinux-sdimage.wic of=/dev/sdX bs=4M conv=fsync status=progress`, đặt boot mode **SD** | cách chính; **kiểm tra kỹ `/dev/sdX`** trước khi `dd` |
+| Thẻ SD | (1) chạy `lsblk -d -o NAME,SIZE,MODEL,TRAN` **trước và sau** khi cắm thẻ; thiết bị mới xuất hiện (cột `TRAN` là `usb`, dung lượng bằng thẻ) là `/dev/sdX` (2) `sudo dd if=images/linux/petalinux-sdimage.wic of=/dev/sdX bs=4M conv=fsync status=progress` (3) đặt boot mode **SD** | cách chính; ghi nhầm thiết bị sẽ **xóa sạch ổ đó** |
 | JTAG | `petalinux-boot --jtag --kernel --fpga` (cần `hw_server` của Vivado, cáp JTAG) | bring-up board lần đầu, chưa tin thẻ SD |
 | QEMU | `petalinux-boot --qemu --kernel` | không cần board; mô phỏng PS, **không có PL** |
 

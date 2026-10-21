@@ -8,7 +8,7 @@ Plan: [plan.md](plan.md). Quy trình: [docs/quy-trinh-xay-dung.md](../docs/quy-t
 
 ## Task 1: Cài PetaLinux 2023.2
 
-**Description:** Người dùng tải `petalinux-v2023.2-*-installer.run` và BSP `xilinx-zc702-v2023.2-final.bsp` từ trang AMD. Cài gói host theo UG1144, rồi cài PetaLinux vào `~/petalinux/2023.2` (không dùng root). Thêm `plnx/*/build/`, `plnx/*/images/`, `plnx/*/components/`, `plnx/zc702/`, `*.bsp`, `*.run` vào `.gitignore`.
+**Description:** Người dùng tải `petalinux-v2023.2-*-installer.run` và BSP `xilinx-zc702-v2023.2-final.bsp` từ trang AMD. Cài gói host theo UG1144, rồi cài PetaLinux vào `~/petalinux/2023.2` (không dùng root). `.gitignore` ở gốc đã bỏ qua `plnx/zc702/`, `*.bsp`, `*.run`. Phần sinh tự động bên trong mỗi project do `.gitignore` riêng của `petalinux-create` lo; sau T7 chạy `git status` để xác nhận chỉ còn `project-spec/` và file cấu hình.
 
 **Acceptance criteria:**
 - [ ] `source ~/petalinux/2023.2/settings.sh` không lỗi

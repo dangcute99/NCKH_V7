@@ -1,10 +1,7 @@
 .claude/settings.local.json
 graphify-out/
-# PetaLinux: chỉ commit project-spec/ và config.project; phần còn lại sinh lại được
-plnx/*/build/
-plnx/*/images/
-plnx/*/components/
-plnx/*/.petalinux/
+# PetaLinux: mỗi project có .gitignore riêng do petalinux-create sinh ra.
+# Project ZC702 chỉ dùng để thử QEMU, không commit.
 plnx/zc702/
 *.bsp
 *.run
