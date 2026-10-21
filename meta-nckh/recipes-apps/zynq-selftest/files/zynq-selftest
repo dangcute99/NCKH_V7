@@ -1,0 +1,91 @@
+#!/bin/sh
+# Kiểm tra nhanh board Zynq sau khi boot (README §6.2).
+# Biến môi trường:
+#   EXPECT_CPUS    số nhân mong đợi (mặc định 2)
+#   EXPECT_MEM_MB  dung lượng DDR mong đợi, MB (bỏ trống thì chỉ in ra)
+#   PING_HOST      máy để ping thử qua eth0 (bỏ trống thì bỏ qua)
+#   MODEM_VERSION  giá trị hex mong đợi của thanh ghi 0 của IP modem
+# Tham số --full: chạy thêm memtester. Mã thoát khác 0 nếu có FAIL.
+
+fails=0
+pass() { echo "PASS  $1"; }
+warn() { echo "WARN  $1"; }
+fail() { echo "FAIL  $1"; fails=$((fails + 1)); }
+
+n=$(grep -c '^processor' /proc/cpuinfo)
+want=${EXPECT_CPUS:-2}
+if [ "$n" -eq "$want" ]; then pass "CPU: $n nhân"; else fail "CPU: $n nhân, mong đợi $want"; fi
+
+mem=$(awk '/^MemTotal/ {print int($2 / 1024)}' /proc/meminfo)
+if [ -z "$EXPECT_MEM_MB" ]; then
+	warn "RAM: $mem MB (đặt EXPECT_MEM_MB để so sánh)"
+# kernel giữ lại một phần DDR, nên chấp nhận từ 90% giá trị mong đợi
+elif [ "$mem" -ge $((EXPECT_MEM_MB * 9 / 10)) ]; then
+	pass "RAM: $mem MB"
+else
+	fail "RAM: $mem MB, mong đợi ~$EXPECT_MEM_MB MB"
+fi
+
+if [ "$1" = "--full" ]; then
+	if ! command -v memtester >/dev/null; then fail "memtester: chưa cài"
+	elif memtester 64M 1 >/dev/null 2>&1; then pass "memtester 64M"
+	else fail "memtester 64M"; fi
+fi
+
+# user thường có thể không đọc được dmesg; khi đó không được báo PASS
+log=$(dmesg 2>/dev/null)
+if [ -z "$log" ]; then
+	fail "kernel log: không đọc được dmesg (chạy bằng root hoặc sudo)"
+elif echo "$log" | grep -qE 'Oops|BUG:|Kernel panic|Call trace'; then
+	fail "kernel log có Oops/BUG/panic/Call trace"
+else
+	pass "kernel log sạch"
+fi
+
+# dòng cuối cho "/" là mount thật (dòng "rootfs" đầu tiên chỉ là initramfs gốc)
+opts=$(awk '$2 == "/" {print $4}' /proc/mounts | tail -n 1)
+case ",$opts," in
+*,rw,*) pass "rootfs: mount rw" ;;
+*) fail "rootfs: không mount rw ($opts)" ;;
+esac
+
+if [ -c /dev/ttyPS0 ]; then pass "UART: /dev/ttyPS0"; else fail "UART: thiếu /dev/ttyPS0"; fi
+
+# chỉ bắt buộc có SD khi rootfs nằm trên SD (QEMU có thể boot không có thẻ)
+if [ -b /dev/mmcblk0 ]; then pass "SD: /dev/mmcblk0"
+elif grep -q 'root=/dev/mmcblk' /proc/cmdline; then fail "SD: thiếu /dev/mmcblk0"
+else warn "SD: không có /dev/mmcblk0"; fi
+
+if [ -d /sys/class/net/eth0 ]; then
+	if [ "$(cat /sys/class/net/eth0/carrier 2>/dev/null)" = 1 ]; then pass "eth0: link up"
+	else warn "eth0: chưa có link (cáp mạng?)"; fi
+	if [ -n "$PING_HOST" ]; then
+		if ping -c 3 -W 2 "$PING_HOST" >/dev/null 2>&1; then pass "ping $PING_HOST"
+		else fail "ping $PING_HOST"; fi
+	fi
+else
+	fail "eth0: không có"
+fi
+
+parts=$(grep -c '^mtd' /proc/mtd 2>/dev/null)
+if [ "${parts:-0}" -gt 0 ]; then pass "QSPI: $parts phân vùng MTD"; else warn "QSPI: không có phân vùng MTD"; fi
+
+fpga=/sys/class/fpga_manager/fpga0/state
+if [ ! -r "$fpga" ]; then warn "PL: không có fpga_manager"
+elif [ "$(cat "$fpga")" = operating ]; then pass "PL: operating"
+else fail "PL: $(cat "$fpga")"; fi
+
+found=0
+for dev in /dev/modem_*; do
+	[ -c "$dev" ] || continue
+	found=1
+	v=$(dd if="$dev" bs=4 count=1 2>/dev/null | hexdump -e '1/4 "%08x"')
+	if [ -z "$MODEM_VERSION" ]; then pass "modem: $dev reg0=0x$v"
+	elif [ "$v" = "$(printf '%08x' "$MODEM_VERSION")" ]; then pass "modem: $dev version 0x$v"
+	else fail "modem: $dev version 0x$v, mong đợi $MODEM_VERSION"; fi
+done
+[ "$found" = 1 ] || warn "modem: không có /dev/modem_*"
+
+echo "---"
+if [ "$fails" -gt 0 ]; then echo "$fails mục FAIL"; exit 1; fi
+echo "Không có FAIL"

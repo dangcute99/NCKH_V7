@@ -11,6 +11,7 @@ Dựng hệ thống Linux nhúng cho Zynq-7000 (ví dụ board E316) bằng **Pe
 - **PetaLinux 2023.2 thay cho Buildroot** (người dùng chọn 21/10). Đây là công cụ chính thức của AMD, tự sinh FSBL, DT, cấu hình U-Boot/kernel từ `.xsa`. Đánh đổi: build nặng, nhiều bước bị ẩn → tài liệu quy trình ghi rõ PetaLinux làm gì bên dưới ở mỗi bước.
 - **Tùy biến dùng chung đặt trong layer `meta-nckh`**, thêm vào từng project qua *User Layers*. Phát triển một lần trên project ZC702, dùng lại nguyên vẹn cho E316. Layer chuẩn Yocto nên chuyển được sang EDF/Yocto sau này.
 - **Thử trước bằng BSP ZC702 + QEMU.** BSP có sẵn `.xsa` và ảnh mẫu; QEMU của Xilinx mô phỏng ZC702. Nhờ vậy kiểm tra được máy build, kernel, rootfs, driver mà chưa cần Vivado hay `.xsa` của E316.
+- **Không cài Vivado trên máy build** (người dùng chọn 21/10). `system.xsa` làm ở máy khác có Vivado 2023.2 hoặc lấy từ nhà cung cấp board. Để vừa ~80 GB: bật `rm_work` và chỉ giữ một project PetaLinux tại một thời điểm.
 - **Rootfs EXT4 trên thẻ SD** (thay cho INITRAMFS mặc định), để dữ liệu và cấu hình còn sau khi tắt nguồn.
 - **Mọi lệnh chạy code dự án** (`petalinux-*`, script, qemu, ghi thẻ SD) đều phải được người dùng đồng ý trước khi chạy.
 
@@ -48,8 +49,8 @@ system.xsa E316 (T6, Vivado) ─┐
 ### Checkpoint 2
 - [ ] `zynq-selftest` chạy trên QEMU, không FAIL ở các mục PS mà QEMU mô phỏng; `modem-regs` nạp/gỡ sạch; người dùng duyệt
 
-### Phase 3: Board E316 (cần Vivado 2023.2 + board)
-- [ ] T6: Thiết kế Vivado chỉ có PS cho E316, xuất `system.xsa` *(người dùng làm, Claude hỗ trợ)*
+### Phase 3: Board E316 (cần `.xsa` + board)
+- [ ] T6: Có `system.xsa` chỉ có PS cho E316 — làm ở máy có Vivado 2023.2 hoặc lấy từ nhà cung cấp board *(người dùng làm, Claude hỗ trợ)*
 - [ ] T7: Project PetaLinux E316 + cấu hình hệ thống + `system-user.dtsi`
 - [ ] T8: Build, `BOOT.BIN`, ảnh `.wic` → boot E316 từ thẻ SD
 
@@ -84,8 +85,9 @@ system.xsa E316 (T6, Vivado) ─┐
 
 | Risk | Impact | Mitigation |
 |------|--------|------------|
-| Ổ đĩa: còn ~80 GB, trong khi PetaLinux ~10 GB + project ZC702 ~50 GB + project E316 ~50 GB + Vivado ~70 GB | High | Cài Vivado ở máy khác hoặc mở rộng ổ; dùng chung thư mục downloads/sstate giữa 2 project; xóa `plnx/zc702/build` sau CP2 |
-| Chưa có bộ cài PetaLinux, BSP ZC702, Vivado (phải tải bằng tài khoản AMD) | High | Người dùng tải ngay ngày 21/10; T1 bị chặn tới khi có bộ cài |
+| Ổ đĩa: còn ~80 GB; PetaLinux ~10 GB + mỗi project ~40–50 GB (~15–25 GB khi bật `rm_work`) + downloads/sstate ~10–20 GB | High | Không cài Vivado; bật `rm_work` (T2, T7); xóa `plnx/zc702/` sau CP2 trước khi tạo `plnx/e316/`; đo dung lượng thật ở CP1 |
+| Không có Vivado trên máy build: `.xsa` phụ thuộc máy khác / nhà cung cấp board | High | Chốt nguồn `.xsa` ngay 21/10 (T6); mỗi lần đổi thiết kế PL (T9) phải xuất lại ở máy có Vivado |
+| Chưa có bộ cài PetaLinux, BSP ZC702 (phải tải bằng tài khoản AMD) | High | Người dùng tải ngay ngày 21/10; T1 bị chặn tới khi có bộ cài |
 | Chưa có tài liệu E316 (DDR, UART, PHY, boot mode) | High | Phase 1–2 không phụ thuộc board; cần schematic trước T6 |
 | Ubuntu 22.04.5 có thể nằm ngoài danh sách hỗ trợ chính thức của 2023.2 | Med | Thường vẫn chạy; nếu installer từ chối thì xử lý theo thông báo, ghi lại cách xử lý |
 | Build lần đầu 1–2 giờ, cần mạng ổn định | Med | Chạy nền qua đêm; giữ `build/` |
@@ -95,5 +97,5 @@ system.xsa E316 (T6, Vivado) ─┐
 ## Open Questions
 
 - Board E316: nhà sản xuất, chip chính xác (7z010/7z020?), DDR, UART nào ra console, PHY Ethernet?
-- Máy có Vivado 2023.2 không, cài ở máy này hay máy khác (ổ đĩa không đủ cho tất cả)?
+- `system.xsa` của E316 lấy từ đâu: máy nào có Vivado 2023.2, hay nhà cung cấp board có sẵn `.xsa`/BSP bản 2023.2?
 - IP modem trên PL đã có thiết kế chưa, hay T9 dùng một IP thanh ghi giả để thử?

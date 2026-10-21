@@ -25,7 +25,7 @@ Plan: [plan.md](plan.md). Quy trình: [docs/quy-trinh-xay-dung.md](../docs/quy-t
 
 ## Task 2: Project BSP ZC702 → build → QEMU
 
-**Description:** `petalinux-create -t project -s xilinx-zc702-v2023.2-final.bsp -n zc702` trong `plnx/`. Chạy `petalinux-build` (lần đầu 1–2 giờ, chạy nền), rồi `petalinux-boot --qemu --kernel`. Mục đích: xác nhận máy build và QEMU hoạt động trước khi tùy biến.
+**Description:** `petalinux-create -t project -s xilinx-zc702-v2023.2-final.bsp -n zc702` trong `plnx/`. Thêm `INHERIT += "rm_work"` vào `project-spec/meta-user/conf/petalinuxbsp.conf` (tiết kiệm ổ đĩa). Chạy `petalinux-build` (lần đầu 1–2 giờ, chạy nền), rồi `petalinux-boot --qemu --kernel`. Mục đích: xác nhận máy build và QEMU hoạt động trước khi tùy biến.
 
 **Acceptance criteria:**
 - [ ] `petalinux-build` thành công; `images/linux/` có `image.ub`, `u-boot.elf`, `zynq_fsbl.elf`
@@ -116,9 +116,9 @@ Plan: [plan.md](plan.md). Quy trình: [docs/quy-trinh-xay-dung.md](../docs/quy-t
 
 ## Phase 3: Board E316
 
-## Task 6: Thiết kế Vivado chỉ có PS cho E316 *(người dùng làm, Claude hỗ trợ)*
+## Task 6: Có `system.xsa` cho E316 *(người dùng làm, Claude hỗ trợ)*
 
-**Description:** Trong Vivado 2023.2, tạo block design ZYNQ7 PS theo schematic E316 (DDR, MIO: UART, SD0, QSPI, ENET0, I2C), chưa có IP trên PL. Generate bitstream, export hardware kèm bitstream vào `hw/e316/system.xsa`.
+**Description:** Vivado **không cài trên máy build**. Lấy `.xsa` bằng một trong hai cách: (a) ở máy khác có Vivado 2023.2, tạo block design ZYNQ7 PS theo schematic E316 (DDR, MIO: UART, SD0, QSPI, ENET0, I2C), chưa có IP trên PL, generate bitstream, export hardware kèm bitstream; (b) dùng `.xsa`/BSP bản 2023.2 do nhà cung cấp board phát hành. Chép file vào `hw/e316/system.xsa` trên máy build.
 
 **Acceptance criteria:**
 - [ ] Có `hw/e316/system.xsa` chứa `.bit` và `ps7_init`
@@ -135,7 +135,7 @@ Plan: [plan.md](plan.md). Quy trình: [docs/quy-trinh-xay-dung.md](../docs/quy-t
 
 ## Task 7: Project PetaLinux E316
 
-**Description:** `petalinux-create -t project --template zynq -n e316` trong `plnx/`, `petalinux-config --get-hw-description=../../hw/e316/system.xsa`. Cấu hình theo docs B3: UART console, rootfs EXT4 `/dev/mmcblk0p2`, bootargs có `generic-uio`, user layer `meta-nckh`. Chép cấu hình rootfs đã chốt ở T4. Viết `system-user.dtsi` (PHY Ethernet, flash QSPI + phân vùng, node IP modem dạng chú thích).
+**Description:** Xóa `plnx/zc702/` trước (máy chỉ đủ chỗ cho một project; `meta-nckh` đã nằm ngoài nên không mất gì). `petalinux-create -t project --template zynq -n e316` trong `plnx/`, `petalinux-config --get-hw-description=../../hw/e316/system.xsa`, thêm `INHERIT += "rm_work"` vào `petalinuxbsp.conf`. Cấu hình theo docs B3: UART console, rootfs EXT4 `/dev/mmcblk0p2`, bootargs có `generic-uio`, user layer `meta-nckh`. Chép cấu hình rootfs đã chốt ở T4. Viết `system-user.dtsi` (PHY Ethernet, flash QSPI + phân vùng, node IP modem dạng chú thích).
 
 **Acceptance criteria:**
 - [ ] `project-spec/configs/config` có `ROOTFS_EXT4`, `SDROOT_DEV=/dev/mmcblk0p2`, user layer `meta-nckh`
@@ -181,7 +181,7 @@ Plan: [plan.md](plan.md). Quy trình: [docs/quy-trinh-xay-dung.md](../docs/quy-t
 
 ## Task 9: IP thanh ghi trên PL + `modem-regs` trên board
 
-**Description:** Thêm vào Vivado một IP AXI-Lite (IP modem thật, hoặc IP thanh ghi giả có thanh ghi version cố định), xuất lại `.xsa`, chạy `petalinux-config --get-hw-description`, bật node `compatible = "nckh,modem-regs"` trong `system-user.dtsi`.
+**Description:** Ở máy có Vivado (máy build không có), thêm một IP AXI-Lite (IP modem thật, hoặc IP thanh ghi giả có thanh ghi version cố định), xuất lại `.xsa`, chạy `petalinux-config --get-hw-description`, bật node `compatible = "nckh,modem-regs"` trong `system-user.dtsi`.
 
 **Acceptance criteria:**
 - [ ] `/dev/modem_*` xuất hiện khi boot

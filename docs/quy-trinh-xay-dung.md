@@ -50,6 +50,8 @@ Nếu installer báo thiếu gói thì cài theo đúng danh sách nó in ra. N�
 
 Mọi thông số phần cứng của board đều đi vào hệ thống qua file này. Nếu cấu hình DDR sai ở đây thì board sẽ chết ở R3, kể cả khi mọi bước build phía sau đều thành công. **Vivado phải cùng phiên bản với PetaLinux (2023.2).**
 
+**Vivado không cài trên máy build** (để tiết kiệm ổ đĩa). Bước B1 làm ở máy khác có Vivado 2023.2, hoặc dùng `.xsa` do nhà cung cấp board phát hành (phải đúng bản 2023.2). Kết quả chỉ cần chép file `system.xsa` sang `hw/<board>/` trên máy build.
+
 ### B2. Tạo project và nhập phần cứng
 
 | | |
@@ -127,6 +129,12 @@ Nguyên tắc: **không sửa file trong `components/`**, vì chúng bị sinh l
 
 ### B8. Build và đóng gói
 
+Máy build chỉ còn ~80 GB, nên trước lần build đầu thêm dòng sau vào `project-spec/meta-user/conf/petalinuxbsp.conf` để Yocto xóa thư mục tạm của từng gói ngay khi build xong (thư mục `build/` giảm từ ~40–50 GB còn ~15–25 GB; đổi lại khó xem log khi một gói build lỗi — tạm bỏ dòng này khi cần gỡ lỗi):
+
+```
+INHERIT += "rm_work"
+```
+
 ```sh
 petalinux-build                                    # lần đầu 1–2 giờ, cần mạng
 petalinux-package --boot --fsbl images/linux/zynq_fsbl.elf \
@@ -160,7 +168,7 @@ BOOT.BIN (bootgen)                         petalinux-sdimage.wic
 | Cách | Lệnh | Dùng khi |
 |------|------|----------|
 | Thẻ SD | (1) chạy `lsblk -d -o NAME,SIZE,MODEL,TRAN` **trước và sau** khi cắm thẻ; thiết bị mới xuất hiện (cột `TRAN` là `usb`, dung lượng bằng thẻ) là `/dev/sdX` (2) `sudo dd if=images/linux/petalinux-sdimage.wic of=/dev/sdX bs=4M conv=fsync status=progress` (3) đặt boot mode **SD** | cách chính; ghi nhầm thiết bị sẽ **xóa sạch ổ đó** |
-| JTAG | `petalinux-boot --jtag --kernel --fpga` (cần `hw_server` của Vivado, cáp JTAG) | bring-up board lần đầu, chưa tin thẻ SD |
+| JTAG | `petalinux-boot --jtag --kernel --fpga` (cần `hw_server` và cáp JTAG; máy build không có Vivado nên cài riêng gói *Hardware Server* của AMD) | bring-up board lần đầu, chưa tin thẻ SD |
 | QEMU | `petalinux-boot --qemu --kernel` | không cần board; mô phỏng PS, **không có PL** |
 
 Trước khi cấp nguồn, cắm UART-USB và mở `picocom -b 115200 /dev/ttyUSB0` để xem log từ R3.

@@ -60,7 +60,7 @@ Toàn bộ thông số phần cứng đi vào project qua **một file `.xsa`** 
 
 | Thành phần | Công cụ |
 |------------|---------|
-| Thiết kế phần cứng, `.xsa` | Vivado 2023.2 |
+| Thiết kế phần cứng, `.xsa` | Vivado 2023.2 — **không cài trên máy build**; `.xsa` làm ở máy khác hoặc lấy từ nhà cung cấp board, rồi chép vào `hw/<board>/` |
 | FSBL, Device Tree từ `.xsa` | PetaLinux (gọi XSCT + `device-tree-xlnx` bên trong) |
 | Toolchain, U-Boot, Kernel, RootFS, driver, ứng dụng | PetaLinux (Yocto bên dưới) |
 | `BOOT.BIN` | `petalinux-package --boot` (gọi bootgen) |
@@ -234,7 +234,8 @@ Layer `meta-nckh` (kernel fragment, driver, ứng dụng kiểm thử) dùng l�
 |--------|-----------|------------|
 | Chưa có tài liệu E316 (chip, DDR, UART console, PHY) | sai cấu hình PS, không boot được | lấy schematic/tài liệu từ nhà sản xuất; cấu hình PS theo đó |
 | Vivado và PetaLinux phải cùng phiên bản | `.xsa` lệch phiên bản → lỗi khi `--get-hw-description` | dùng 2023.2 cho cả hai |
-| Ổ đĩa: Vivado (~70 GB) + PetaLinux + project build (~50–100 GB) | máy hiện còn ~80 GB, không đủ cho cả ba | cài Vivado ở máy khác hoặc mở rộng ổ; xóa `build/` của project thử sau khi xong |
+| Ổ đĩa: PetaLinux (~10 GB) + mỗi project build (~40–50 GB) + downloads/sstate (~10–20 GB) | máy build còn ~80 GB, không đủ cho 2 project cùng lúc | không cài Vivado trên máy build; bật `rm_work`; chỉ giữ một project tại một thời điểm (xóa `plnx/zc702/` trước khi tạo `plnx/e316/`) |
+| Không có Vivado trên máy build | không tự sửa được thiết kế phần cứng, không có `hw_server` cho JTAG | mỗi lần đổi thiết kế (vd. thêm IP modem) phải làm `.xsa` ở máy có Vivado; JTAG dùng bản cài riêng *Hardware Server* (nhỏ) nếu cần |
 | Lần build đầu cần mạng và lâu (1–2 giờ) | trễ lịch | chạy nền qua đêm; giữ `build/` và thư mục downloads giữa các lần build |
 | AMD đã thay PetaLinux bằng EDF (Yocto) từ 2025.1; bản PetaLinux cuối dự kiến cuối 2026 | quy trình không còn được phát triển tiếp ở các bản mới | dùng 2023.2 (khớp Vivado 2023.2); tùy biến để trong layer Yocto `meta-nckh` nên chuyển sang EDF/Yocto được |
 | Tên/label IP modem trong `pl.dtsi` phụ thuộc thiết kế Vivado | `system-user.dtsi` tham chiếu sai label thì build DT lỗi | giữ phần IP dạng mẫu có chú thích, chỉ bật khi IP đã có trong thiết kế |
