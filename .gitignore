@@ -5,3 +5,9 @@ graphify-out/
 plnx/zc702/
 *.bsp
 *.run
+
+# Project Vivado sinh ra từ hw/<board>/create_project.tcl (chỉ commit script, xdc, xsa)
+hw/*/vivado/
+*.jou
+*.log
+!tasks/logs/*.log

@@ -1,101 +1,103 @@
-# Implementation Plan: Linux nhúng trên Zynq-7000 cho modem vệ tinh (PetaLinux 2023.2)
+# Implementation Plan: Linux nhúng trên Zynq-7000 cho modem vệ tinh (PetaLinux 2021.1, E316)
 
-Spec: [README.md](../README.md). Quy trình chi tiết: [docs/quy-trinh-xay-dung.md](../docs/quy-trinh-xay-dung.md). Task list: [todo.md](todo.md). Nhật ký: [nhat-ky.md](nhat-ky.md).
+Spec: [README.md](../README.md). Quy trình chi tiết: [docs/quy-trinh-xay-dung.md](../docs/quy-trinh-xay-dung.md). Task list: [todo.md](todo.md). Nhật ký: [nhat-ky.md](nhat-ky.md). Lập lại 23/10/2026; sửa cùng ngày khi người dùng chốt “làm từ đầu, `_ZynQ_Study` chỉ tham khảo”.
 
 ## Overview
 
-Dựng hệ thống Linux nhúng cho Zynq-7000 (ví dụ board E316) bằng **PetaLinux 2023.2**. Phần tùy biến dùng chung (kernel fragment, driver `modem-regs`, ứng dụng `zynq-selftest`) nằm trong layer Yocto `meta-nckh`. Phần riêng board (`.xsa`, `system-user.dtsi`, cấu hình hệ thống) nằm trong project `plnx/<board>`. Làm trước những phần **không cần board E316 và Vivado** bằng BSP ZC702 + QEMU, sau đó mới áp lên E316.
+Dựng Linux nhúng cho ANTSDR E316 **từ đầu** bằng Vivado 2021.1 + PetaLinux 2021.1 trên cùng máy build Ubuntu 20.04.6. Mỗi task là một **lát dọc chạy trên board**: thêm đúng một khả năng (login, mạng, rootfs bền, kernel fragment, selftest, IP modem + driver) và kiểm ngay trên E316. Phần dùng chung nằm trong layer `meta-modem`; phần riêng board nằm trong `hw/e316/` (project Vivado + XSA) và `plnx/e316/project-spec/`.
 
 ## Architecture Decisions
 
-- **PetaLinux 2023.2 thay cho Buildroot** (người dùng chọn 21/10). Đây là công cụ chính thức của AMD, tự sinh FSBL, DT, cấu hình U-Boot/kernel từ `.xsa`. Đánh đổi: build nặng, nhiều bước bị ẩn → tài liệu quy trình ghi rõ PetaLinux làm gì bên dưới ở mỗi bước.
-- **Tùy biến dùng chung đặt trong layer `meta-nckh`**, thêm vào từng project qua *User Layers*. Phát triển một lần trên project ZC702, dùng lại nguyên vẹn cho E316. Layer chuẩn Yocto nên chuyển được sang EDF/Yocto sau này.
-- **Thử trước bằng BSP ZC702 + QEMU.** BSP có sẵn `.xsa` và ảnh mẫu; QEMU của Xilinx mô phỏng ZC702. Nhờ vậy kiểm tra được máy build, kernel, rootfs, driver mà chưa cần Vivado hay `.xsa` của E316.
-- **Không cài Vivado trên máy build** (người dùng chọn 21/10). `system.xsa` làm ở máy khác có Vivado 2023.2 hoặc lấy từ nhà cung cấp board. Để vừa ~80 GB: bật `rm_work` và chỉ giữ một project PetaLinux tại một thời điểm.
-- **Rootfs EXT4 trên thẻ SD** (thay cho INITRAMFS mặc định), để dữ liệu và cấu hình còn sau khi tắt nguồn.
-- **Mọi lệnh chạy code dự án** (`petalinux-*`, script, qemu, ghi thẻ SD) đều phải được người dùng đồng ý trước khi chạy.
+- **Làm từ đầu; `_ZynQ_Study/` chỉ để tham khảo** (người dùng chốt 23/10). Không chép XSA, project Vivado hay image từ đó. Được đọc để đối chiếu thông số đã kiểm trên board: DDR `MT41J256M16 RE-125` 32-bit, UART1 MIO 12–13, chân + clock Ethernet (ENET0 EMIO, `gmii_to_rgmii`, FCLK_CLK2 200 MHz), công thức DT PHY RTL8211F.
+- **Vivado 2021.1 cài trên máy build** (thay quyết định 21/10). Lý do: làm XSA từ đầu cần sửa thiết kế nhiều lần; máy còn ~419 GB. Chỉ cài Vivado ML Standard + họ Zynq-7000 (~30 GB), không cài Vitis. Không chạy synthesis song song với `petalinux-build` (15 GB RAM, chưa có swap).
+- **XSA làm theo lát:** XSA đầu chỉ có PS (DDR, UART1, SD0) để boot; thêm Ethernet ở lát mạng; thêm IP AXI-Lite ở lát driver. Mỗi lần đổi XSA: `--get-hw-description` → `petalinux-package --boot` → chép lại `BOOT.BIN`.
+- **Bỏ ZC702 + QEMU, kiểm thẳng trên E316.** Đánh đổi: không có môi trường thử khi chưa có board; bù bằng snapshot `deploy/` trước mỗi thay đổi lớn và khoanh vùng 3 lớp PCB / FPGA / Linux.
+- **Driver `modem-regs` kiểm trên IP AXI-Lite tự làm** (thanh ghi version cố định + scratch), không qua BRAM trung gian.
+- **Yocto gatesgarth:** recipe dùng `_append`, license `GPL-2.0`; lần đầu kiểm ở T8.
+- **Mọi lệnh chạy code dự án** (`petalinux-*`, Vivado batch, ghi thẻ SD, chạy trên board) phải được người dùng đồng ý trước.
 
 ## Dependency Graph
 
 ```
-Cài PetaLinux (T1)
-  └── Project BSP ZC702 → build → QEMU (T2)
-        ├── meta-nckh: kernel fragment (T3)
-        ├── meta-nckh: gói rootfs + zynq-selftest (T4)
-        └── meta-nckh: driver modem-regs (T5)
-              │
-system.xsa E316 (T6, Vivado) ─┐
-                              └── Project E316 + system-user.dtsi (T7)
-                                    └── build + BOOT.BIN + wic → boot E316 (T8)
-                                          ├── IP modem trên PL (T9)
-                                          ├── QSPI (T10)
-                                          └── đo đạc + ổn định (T11)
+T1 Máy build sẵn sàng (người dùng: sudo, tải bộ cài, token AMD)
+ ├── T2 Cài PetaLinux 2021.1 ─────────────┐
+ └── T3 Cài Vivado 2021.1                 │
+      └── T4 XSA tối thiểu (PS: DDR, UART1, SD0)
+           └── T5 E316 boot tới login (INITRAMFS) ← đường găng, rủi ro cao nhất
+                └── T6 Ethernet (Vivado EMIO + gmii_to_rgmii + DT) + SSH
+                     └── T7 Rootfs EXT4 trên SD (.wic)
+                          └── T8 meta-modem + kernel fragment
+                               ├── T9 zynq-selftest trên board
+                               └── T10 IP AXI-Lite (Vivado) + modem-regs
+T11 Đo đạc + báo cáo (cần T7, T9; T10 nếu kịp)
+T12 QSPI (tuỳ chọn, sau T7)
 ```
 
 ## Task List
 
-### Phase 1: Môi trường + QEMU (không cần board, không cần Vivado)
-- [ ] T1: Cài PetaLinux 2023.2 + gói host
-- [ ] T2: Project từ BSP ZC702 → `petalinux-build` → QEMU tới login
+### Phase 1: Công cụ + đường boot tối thiểu
+- [ ] T1: Máy build sẵn sàng *(người dùng)*
+- [ ] T2: Cài PetaLinux 2021.1
+- [ ] T3: Cài Vivado 2021.1 (ML Standard, Zynq-7000)
+- [ ] T4: XSA tối thiểu cho E316 (PS: DDR, UART1, SD0)
+- [ ] T5: E316 boot tới login qua UART (INITRAMFS)
 
 ### Checkpoint 1
-- [ ] Build ZC702 sạch; QEMU boot tới login; người dùng duyệt
+- [ ] E316 login UART bằng XSA + image tự làm; người dùng duyệt
 
-### Phase 2: Layer meta-nckh (kiểm thử trên QEMU ZC702)
-- [ ] T3: Layer `meta-nckh` + kernel fragment `nckh.cfg`
-- [ ] T4: Gói rootfs + ứng dụng `zynq-selftest`
-- [ ] T5: Driver mẫu `modem-regs`
+### Phase 2: Hệ thống dùng được
+- [ ] T6: Ethernet + SSH (Vivado + DT)
+- [ ] T7: Rootfs EXT4 trên thẻ SD (`.wic`)
+- [ ] T8: Layer `meta-modem` + kernel fragment
 
 ### Checkpoint 2
-- [ ] `zynq-selftest` chạy trên QEMU, không FAIL ở các mục PS mà QEMU mô phỏng; `modem-regs` nạp/gỡ sạch; người dùng duyệt
+- [ ] Boot từ `.wic`, SSH được, dữ liệu còn sau reboot, kernel có option modem; commit; người dùng duyệt
 
-### Phase 3: Board E316 (cần `.xsa` + board)
-- [ ] T6: Có `system.xsa` chỉ có PS cho E316 — làm ở máy có Vivado 2023.2 hoặc lấy từ nhà cung cấp board *(người dùng làm, Claude hỗ trợ)*
-- [ ] T7: Project PetaLinux E316 + cấu hình hệ thống + `system-user.dtsi`
-- [ ] T8: Build, `BOOT.BIN`, ảnh `.wic` → boot E316 từ thẻ SD
+### Phase 3: Kiểm thử và driver modem
+- [ ] T9: `zynq-selftest` chạy trên board
+- [ ] T10: IP AXI-Lite (version + scratch) + `modem-regs`
 
 ### Checkpoint 3
-- [ ] E316 boot tới login; `zynq-selftest` PASS các mục PS; người dùng duyệt
+- [ ] selftest PASS PS + PL + modem; người dùng duyệt
 
-### Phase 4: Modem IP, QSPI, đo đạc
-- [ ] T9: IP thanh ghi trên PL + `modem-regs` trên board thật
-- [ ] T10: Boot từ QSPI *(ngoài phạm vi lịch 1 tuần, chỉ làm nếu còn thời gian)*
-- [ ] T11: Đo boot time, iperf3, chạy ổn định → báo cáo kiểm thử (rút gọn: 12 giờ, reboot 20 lần)
+### Phase 4: Đo đạc
+- [ ] T11: Đo boot, mạng, rootfs, ổn định → `docs/test-report.md`
+- [ ] T12: Boot QSPI *(tuỳ chọn)*
 
 ### Checkpoint 4
-- [ ] Đạt các tiêu chí ở README §6 (bản rút gọn); người dùng duyệt
+- [ ] Đạt tiêu chí README §6 (bản rút gọn); người dùng duyệt
 
-## Lịch thực hiện (1 tuần: Thứ Tư 21/10 – Thứ Tư 28/10/2026)
+## Lịch (Thứ Sáu 23/10 – Thứ Tư 28/10/2026)
 
 | Ngày | Task | Checkpoint |
 |------|------|------------|
-| Thứ Tư 21/10 | T1 (tải + cài ~1–2 giờ); tối: bắt đầu build T2 chạy qua đêm | |
-| Thứ Năm 22/10 | T2 (QEMU), T3 | **CP1** |
-| Thứ Sáu 23/10 | T4, T5 | **CP2** |
-| Thứ Bảy 24/10 – Chủ Nhật 25/10 | dự phòng | |
-| Thứ Hai 26/10 | T7, T8 | **CP3** |
-| Thứ Ba 27/10 | T9; buổi tối bắt đầu chạy thử ổn định qua đêm | |
-| Thứ Tư 28/10 | T11 rút gọn, viết báo cáo | **CP4** |
+| Thứ Sáu 23/10 | T1 (người dùng); T2; T3 chạy nền (tải + cài 1–2 giờ) | |
+| Thứ Bảy 24/10 | T4 (thiết kế + bitstream); tối: build đầu PetaLinux | |
+| Chủ Nhật 25/10 | T5 | **CP1** |
+| Thứ Hai 26/10 | T6, T7 | |
+| Thứ Ba 27/10 | T8, T9 | **CP2** |
+| Thứ Tư 28/10 | T10, T11 rút gọn, báo cáo | **CP3/CP4** |
 
-- **Song song:** người dùng làm T6 (Vivado → `system.xsa`) với **hạn chót Thứ Sáu 23/10**.
-- **Đường găng:** T6 → T7 → T8. Nếu `.xsa` hoặc tài liệu E316 trễ bao nhiêu ngày thì Phase 3–4 trễ bấy nhiêu ngày.
-- **Cắt phạm vi để vừa 1 tuần:** T10 (QSPI) bỏ; T11 rút gọn (12 giờ thay cho 24 giờ, 20 lần reboot thay cho 100). Nếu vẫn trễ thì bỏ tiếp T9, giữ `modem-regs` ở mức chạy được trên QEMU.
+- **Đường găng:** T1 → T3 → T4 → T5 → T6 → T7 → T8. Làm từ đầu thêm T3, T4 và phần Vivado của T6 vào đường găng; lịch 1 tuần **rất sát**.
+- **Cắt phạm vi nếu trễ (theo thứ tự):** bỏ T12; T11 rút gọn (12 giờ, 20 lần reboot); T10 lùi sang tuần sau; giữ CP2 làm mốc tối thiểu cho 28/10.
+- **Song song được:** T2 với T3 (khác thư mục, nhưng không build cùng lúc); viết `system-user.dtsi` của T6 trong lúc chờ bitstream.
 
 ## Risks and Mitigations
 
 | Risk | Impact | Mitigation |
 |------|--------|------------|
-| Ổ đĩa: còn ~80 GB; PetaLinux ~10 GB + mỗi project ~40–50 GB (~15–25 GB khi bật `rm_work`) + downloads/sstate ~10–20 GB | High | Không cài Vivado; bật `rm_work` (T2, T7); xóa `plnx/zc702/` sau CP2 trước khi tạo `plnx/e316/`; đo dung lượng thật ở CP1 |
-| Không có Vivado trên máy build: `.xsa` phụ thuộc máy khác / nhà cung cấp board | High | Chốt nguồn `.xsa` ngay 21/10 (T6); mỗi lần đổi thiết kế PL (T9) phải xuất lại ở máy có Vivado |
-| Chưa có bộ cài PetaLinux, BSP ZC702 (phải tải bằng tài khoản AMD) | High | Người dùng tải ngay ngày 21/10; T1 bị chặn tới khi có bộ cài |
-| Chưa có tài liệu E316 (DDR, UART, PHY, boot mode) | High | Phase 1–2 không phụ thuộc board; cần schematic trước T6 |
-| Ubuntu 22.04.5 có thể nằm ngoài danh sách hỗ trợ chính thức của 2023.2 | Med | Thường vẫn chạy; nếu installer từ chối thì xử lý theo thông báo, ghi lại cách xử lý |
-| Build lần đầu 1–2 giờ, cần mạng ổn định | Med | Chạy nền qua đêm; giữ `build/` |
-| QEMU khác phần cứng thật (không có PL, khác PHY) | Med | QEMU chỉ dùng kiểm thử kernel/rootfs/driver; T8–T11 kiểm thử trên board |
-| PetaLinux đã bị thay bằng EDF từ 2025.1 | Low | 2023.2 khớp Vivado 2023.2, đủ cho đề tài; tùy biến nằm trong layer Yocto nên chuyển được |
+| Cấu hình DDR sai trong XSA tự làm → treo sau banner FSBL | High | Đối chiếu từng thông số DDR với `system_bd.tcl` vàng (chỉ đọc); kiểm ở T5 với XSA chỉ có PS trước khi thêm PL |
+| Chưa có bộ cài PetaLinux / Vivado 2021.1 (cần tài khoản AMD) | High | Người dùng tải và tạo token trong T1; T2, T3 bị chặn tới khi có |
+| Mirror Yocto của 2021.1 đã cũ, build đầu lỗi tải gói | High | Build đầu ngay khi có XSA (T5); giữ `downloads/`, `sstate-cache/` |
+| Ethernet qua EMIO + `gmii_to_rgmii` sai clock/XDC → không link | Med | Tách thành lát riêng T6 sau khi boot ổn; đối chiếu XDC và FCLK_CLK2 200 MHz với tài liệu tham khảo |
+| 15 GB RAM, không swap: Vivado + PetaLinux cùng lúc hết RAM | Med | Chạy lần lượt; cân nhắc tạo swapfile 16 GB (người dùng quyết) |
+| Sửa đổi gatesgarth của `meta-modem` sai | Med | T8 tách riêng sau khi board chạy ổn |
+| Ghi nhầm thiết bị khi `dd` thẻ SD | High | `lsblk` trước/sau; người dùng xác nhận `/dev/sdX` |
+| Lịch 1 tuần không đủ khi làm từ đầu | High | Thứ tự cắt phạm vi ở trên; CP2 là mốc tối thiểu |
 
 ## Open Questions
 
-- Board E316: nhà sản xuất, chip chính xác (7z010/7z020?), DDR, UART nào ra console, PHY Ethernet?
-- `system.xsa` của E316 lấy từ đâu: máy nào có Vivado 2023.2, hay nhà cung cấp board có sẵn `.xsa`/BSP bản 2023.2?
-- IP modem trên PL đã có thiết kế chưa, hay T9 dùng một IP thanh ghi giả để thử?
+- T7 đổi rootfs sang EXT4 (thay INITRAMFS mặc định): giữ?
+- T10: IP modem thật hay IP thanh ghi giả (version cố định + scratch)?
+- Tạo swapfile 16 GB trên máy build?
+- `docs/lo-trinh.md` và graph lộ trình còn theo plan cũ: cập nhật sau khi người dùng duyệt plan này.

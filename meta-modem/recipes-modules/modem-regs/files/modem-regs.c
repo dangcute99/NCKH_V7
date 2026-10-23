@@ -2,7 +2,7 @@
 /*
  * modem-regs: driver mẫu cho khối thanh ghi AXI-Lite của modem trên PL.
  *
- * Mỗi node DT có compatible = "nckh,modem-regs" tạo ra /dev/modem_<địa chỉ>.
+ * Mỗi node DT có compatible = "modem,modem-regs" tạo ra /dev/modem_<địa chỉ>.
  * Offset trong file là offset thanh ghi; đọc/ghi theo word 32-bit căn lề,
  * ví dụ: dd if=/dev/modem_43c00000 bs=4 count=1 skip=2 | hexdump
  */
@@ -121,7 +121,7 @@ static int mr_remove(struct platform_device *pdev)
 }
 
 static const struct of_device_id mr_of_match[] = {
-	{ .compatible = "nckh,modem-regs" },
+	{ .compatible = "modem,modem-regs" },
 	{ }
 };
 MODULE_DEVICE_TABLE(of, mr_of_match);
