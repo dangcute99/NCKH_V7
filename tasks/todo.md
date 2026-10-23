@@ -15,12 +15,15 @@ Quy ước: `$P` = `plnx/e316`; mỗi terminal PetaLinux chạy `source /opt/pkg
 **Description:** Đổi `/bin/sh` sang bash; cài 29 gói host của PetaLinux (danh sách đã kiểm, xem [docs/lo-trinh.md](../docs/lo-trinh.md) mục 2) và 4 gói của Vivado (`libtinfo5 libncurses5 default-jre libcanberra-gtk-module`); tạo `/opt/pkg` và `/tools/Xilinx` thuộc user; thêm user vào `dialout`. Tải `petalinux-v2021.1-final-installer.run` và `Xilinx_Unified_2021.1_0610_2318_Lin64.bin` (web installer) từ AMD Archive 2021.1; tạo token đăng nhập bằng `xsetup -b AuthTokenGen`.
 
 **Acceptance criteria:**
-- [ ] `readlink -f /bin/sh` ra `/usr/bin/bash`; không còn gói nào trong 33 gói báo thiếu
-- [ ] Có 2 bộ cài; `/opt/pkg/petalinux/2021.1` và `/tools/Xilinx` thuộc user
-- [ ] `xsetup -b AuthTokenGen` báo tạo token thành công
+- [x] `readlink -f /bin/sh` ra `/usr/bin/bash` (23/10)
+- [x] Đủ 29 gói host của PetaLinux (23/10)
+- [x] Đủ 4 gói của Vivado (`libtinfo5 libncurses5 default-jre libcanberra-gtk-module`) (23/10)
+- [x] Có 2 bộ cài; `/opt/pkg/petalinux/2021.1` thuộc user (23/10)
+- [x] `/tools/Xilinx` thuộc user; user trong nhóm `dialout` (23/10; `dialout` có hiệu lực sau khi đăng nhập lại)
+- [x] `xsetup -b AuthTokenGen` báo tạo token thành công (23/10, hạn tới 30/10/2026)
 
 **Verification:**
-- [ ] Manual check: vòng `dpkg-query` kiểm 33 gói; `ls -ld /opt/pkg/petalinux/2021.1 /tools/Xilinx`; `id | grep dialout`
+- [x] Manual check: vòng `dpkg-query` kiểm 33 gói; `ls -ld /opt/pkg/petalinux/2021.1 /tools/Xilinx`; `getent group dialout` (23/10)
 
 **Dependencies:** None
 
@@ -33,11 +36,11 @@ Quy ước: `$P` = `plnx/e316`; mỗi terminal PetaLinux chạy `source /opt/pkg
 **Description:** `./petalinux-v2021.1-final-installer.run -d /opt/pkg/petalinux/2021.1` (không root).
 
 **Acceptance criteria:**
-- [ ] `source …/settings.sh …` không lỗi
-- [ ] `petalinux-create --help` chạy được
+- [x] `source …/settings.sh …` không lỗi (23/10; chỉ cảnh báo thiếu tftp server — không cần vì boot SD)
+- [x] `petalinux-create --help` chạy được
 
 **Verification:**
-- [ ] Manual check: `which petalinux-build petalinux-create petalinux-package`
+- [x] Manual check: `which petalinux-build petalinux-create petalinux-package` (cài tại `/opt/pkg/petalinux/2021.1`, 13 GB)
 
 **Dependencies:** T1
 
@@ -48,6 +51,8 @@ Quy ước: `$P` = `plnx/e316`; mỗi terminal PetaLinux chạy `source /opt/pkg
 ## Task 3: Cài Vivado 2021.1 (ML Standard, Zynq-7000)
 
 **Description:** `xsetup -b ConfigGen` sinh file cấu hình; sửa để chỉ chọn Vivado, edition ML Standard, họ thiết bị Zynq-7000, đích `/tools/Xilinx`. Cài ở chế độ batch, chạy nền (1–2 giờ). Người dùng chạy script cài driver cáp JTAG bằng sudo sau khi cài xong. Không chạy cùng lúc với `petalinux-build`.
+
+**Tiến độ 23/10:** đã sinh `~/.Xilinx/install_config.txt` (Vivado ML Standard, chỉ `Zynq-7000:1`, không DocNav/Model Composer/shortcut). Lệnh cài: `~/Downloads/xil2021.1/xsetup -a XilinxEULA,3rdPartyEULA,WebTalkTerms -b Install -c ~/.Xilinx/install_config.txt` — chờ `/tools/Xilinx` (T1). Token hết hạn 30/10: cài trước ngày đó, quá hạn thì chạy lại `AuthTokenGen`.
 
 **Acceptance criteria:**
 - [ ] `vivado -version` in `v2021.1`
