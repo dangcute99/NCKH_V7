@@ -1,6 +1,8 @@
 # Quy trình xây dựng và khởi động Linux trên Zynq-7000 (PetaLinux 2021.1)
 
-Tài liệu đi qua **toàn bộ chuỗi**: từ thiết kế phần cứng và build bằng PetaLinux trên máy tính, tới lúc BootROM trong chip chạy lệnh đầu tiên, rồi tới ứng dụng modem chạy trên Linux. Mỗi bước nêu rõ đầu vào, đầu ra, **PetaLinux làm gì bên dưới**, cách kiểm tra và cách khoanh vùng khi bước đó lỗi.
+Tài liệu đi qua **toàn bộ chuỗi**: từ chuẩn bị môi trường, thiết kế phần cứng và build bằng PetaLinux trên máy tính, tới lúc BootROM trong chip chạy lệnh đầu tiên, rồi tới ứng dụng modem chạy trên Linux. Mỗi bước nêu rõ đầu vào, đầu ra, **cơ chế bên dưới**, cách kiểm chứng, **kết quả thực tế** và **vấn đề gặp phải cùng cách xử lý**.
+
+**Vai trò trong báo cáo:** tài liệu này là nguồn chính cho chương *Phương pháp và quy trình xây dựng* của báo cáo nghiên cứu (dàn ý: [bao-cao-dan-y.md](bao-cao-dan-y.md)). Phần quy trình (B0–B9, R1–R7) mô tả phương pháp tổng quát, áp dụng được cho mọi board Zynq-7000; các dòng *Kết quả thực tế* và *Vấn đề gặp & xử lý* ghi số liệu và bằng chứng khi áp dụng trên board ANTSDR E316, được cập nhật sau mỗi task. Log thô lưu trong `tasks/logs/`.
 
 Bối cảnh, mục tiêu và phiên bản phần mềm xem trong [README.md](../README.md). Tiến độ từng task xem trong [tasks/todo.md](../tasks/todo.md).
 
@@ -9,7 +11,7 @@ Quy ước: `$P` = thư mục project PetaLinux của board (vd. `plnx/e316`); l
 ```
           TRÊN MÁY TÍNH (build)                                       TRÊN BOARD (boot)
  ┌────────────────────────────────────────────┐        ┌────────────────────────────────────────────┐
- │ B0 Cài PetaLinux 2021.1                    │        │ R1 Bật nguồn, đọc chân boot mode           │
+ │ B0 Chuẩn bị môi trường (host, PL, Vivado)  │        │ R1 Bật nguồn, đọc chân boot mode           │
  │ B1 Vivado ──► system.xsa                   │        │ R2 BootROM ──► nạp FSBL vào OCM            │
  │ B2 petalinux-create + --get-hw-description │        │ R3 FSBL ──► DDR, bitstream, U-Boot, DTB    │
  │ B3 petalinux-config (hệ thống)             │        │ R4 U-Boot ──► boot.scr ──► image.ub        │
@@ -26,29 +28,33 @@ Thứ tự ở trục build (B) **ngược** với trục boot (R). File đượ
 
 ## Phần A — Build trên máy tính (PetaLinux)
 
-### B0. Cài PetaLinux 2021.1
+### B0. Chuẩn bị môi trường build (máy chủ, PetaLinux, Vivado)
 
 | | |
 |---|---|
-| **Đầu vào** | `petalinux-v2021.1-final-installer.run` (tải từ trang AMD, cần tài khoản), Ubuntu 20.04 |
-| **Làm gì** | Cài gói host theo UG1144 (script `plnx-env-setup.sh` của AMD). Tạo thư mục cài cho user thường: `sudo mkdir -p /opt/pkg/petalinux/2021.1 && sudo chown -R $USER /opt/pkg`. Cài **không dùng root**: `./petalinux-v2021.1-final-installer.run -d /opt/pkg/petalinux/2021.1`. Mỗi terminal: `source /opt/pkg/petalinux/2021.1/settings.sh /opt/pkg/petalinux/2021.1` (truyền đủ đường dẫn, như lộ trình E316) |
-| **Đầu ra** | `/opt/pkg/petalinux/2021.1/` (~10 GB): các lệnh `petalinux-*`, toolchain, XSCT nội bộ, QEMU của Xilinx |
-| **Kiểm tra** | `which petalinux-build`; `petalinux-create --help` không lỗi |
-| **Trạng thái** | **Xong 23/10** (T2): cài tại `/opt/pkg/petalinux/2021.1`, 13 GB |
+| **Mục đích** | Có một máy build tái lập được, đúng phiên bản công cụ yêu cầu |
+| **Đầu vào** | Ubuntu 20.04 (x86_64); bộ cài `petalinux-v2021.1-final-installer.run` và `Xilinx_Unified_2021.1_0610_2318_Lin64.bin` (tải từ AMD, cần tài khoản) |
+| **Thực hiện** | (1) Đổi `/bin/sh` sang bash: `sudo dpkg-reconfigure dash` → No. (2) Cài gói host theo UG1144 và UG973 (danh sách ở [lo-trinh.md](lo-trinh.md) mục 2). (3) Tạo thư mục cài thuộc user thường: `/opt/pkg/petalinux/2021.1`, `/tools/Xilinx`. (4) Cài PetaLinux **không dùng root**: `./petalinux-v2021.1-final-installer.run -d /opt/pkg/petalinux/2021.1`. (5) Cài Vivado ở chế độ batch: `xsetup -b AuthTokenGen` → `xsetup -b ConfigGen` (chọn Vivado ML Standard, chỉ họ Zynq-7000) → `xsetup -b Install -c install_config.txt`. Mỗi terminal: `source /opt/pkg/petalinux/2021.1/settings.sh /opt/pkg/petalinux/2021.1` và `source /tools/Xilinx/Vivado/2021.1/settings64.sh` |
+| **Cơ chế bên dưới** | Bộ cài PetaLinux giải nén sẵn toolchain ARM, XSCT, QEMU và metadata Yocto 3.2 (gatesgarth); mã nguồn các gói sẽ tải khi build lần đầu. Bộ cài web của Vivado chỉ tải phần lõi chung + họ thiết bị được chọn |
+| **Đầu ra** | Lệnh `petalinux-*`; Vivado + `hw_server` |
+| **Kiểm chứng** | `which petalinux-create petalinux-build petalinux-package`; `vivado -version`; tạo thử project `xc7z020clg400-1` có khối `processing_system7` bằng Tcl batch |
+| **Tiến độ** | **Xong 23/10** (T1, T2, T3, gồm driver cáp JTAG: `cd /tools/Xilinx/Vivado/2021.1/data/xicom/cable_drivers/lin64/install_script/install_drivers && sudo ./install_drivers`) |
+| **Kết quả thực tế** | Máy build: Ubuntu 20.04.6, kernel 5.15, 12 luồng, 15 GB RAM, ổ trống ~419 GB, không swap. PetaLinux 2021.1: 13 GB, cài ~15 phút. Vivado v2021.1 (SW Build 3247384) ML Standard chỉ Zynq-7000: tải 22,4 GB, cài vào 27 GB, tổng ~2 giờ (băng thông 4–5 MB/s). Thử Tcl batch tạo project + PS7: thành công |
+| **Vấn đề gặp & xử lý** | (1) Gói `python`, `pylint3` trong danh sách UG1144 không tồn tại trên Ubuntu 20.04 → thay bằng `python2`, `pylint` (đã kiểm bằng `apt-get -s`). (2) Lần đầu trả lời “có” ở `dpkg-reconfigure dash` nên `/bin/sh` vẫn là dash → chạy lại, chọn “không”; kiểm bằng `readlink -f /bin/sh`. (3) `AuthTokenGen` báo *Authentication error* lần đầu → chạy lại với đúng mật khẩu thì tạo được token (hạn 7 ngày). (4) PetaLinux cảnh báo thiếu TFTP server → bỏ qua vì triển khai bằng thẻ SD. (5) Script `install_drivers` của Vivado báo không tìm thấy `install_digilent.sh`, `setup_xilinx_ftdi`, `setup_pcusb` (rc=127) khi chạy bằng đường dẫn tuyệt đối từ thư mục khác → script gọi file con bằng đường dẫn tương đối `./`; chạy lại từ chính thư mục của script thì cài được 3 rule udev `52-xilinx-*.rules` |
 
-Nếu installer báo thiếu gói thì cài theo đúng danh sách nó in ra. Máy build hiện có `/bin/sh` là `dash`, nên trước khi cài phải chạy `sudo dpkg-reconfigure dash` và chọn **No** để `/bin/sh` trỏ tới bash.
-
-Trước mọi `petalinux-config` (menu ncurses) chạy `stty rows 40 cols 120`, nếu không menu có thể vỡ khung (bài học Lab 8).
+Trước mọi `petalinux-config` (menu ncurses) chạy `stty rows 40 cols 120`, nếu không menu có thể vỡ khung.
 
 ### B1. Thiết kế phần cứng (Vivado)
 
 | | |
 |---|---|
-| **Đầu vào** | Schematic board E316 (DDR, MIO, clock, PHY); với E316 đã có sẵn XSA (xem dưới) |
+| **Đầu vào** | Schematic / thông số board E316 (DDR, MIO, clock, PHY) |
 | **Làm gì** | Block design `ZYNQ7 Processing System`: cấu hình DDR, gán MIO cho UART/SD/QSPI/ENET/I2C, clock. Thêm IP modem trên PL nếu có. Generate bitstream → Export Hardware (kèm bitstream) |
 | **Đầu ra** | `hw/e316/system.xsa` (zip gồm `.bit`, `ps7_init.c/.tcl`, mô tả phần cứng `.hwh`) |
 | **Kiểm tra** | `unzip -l hw/e316/system.xsa` thấy `.bit` và `ps7_init*` |
-| **Trạng thái** | Chưa làm: T4 (XSA chỉ PS), T6 (thêm Ethernet), T10 (thêm IP modem). Vivado đang cài (T3) |
+| **Tiến độ** | Chưa làm: T4 (XSA chỉ PS), T6 (thêm Ethernet), T10 (thêm IP modem) |
+| **Kết quả thực tế** | *(điền sau T4: bảng thông số PS đã đặt, tài nguyên PL dùng, thời gian synthesis/implementation)* |
+| **Vấn đề gặp & xử lý** | *(điền sau T4, T6, T10)* |
 
 Mọi thông số phần cứng của board đều đi vào hệ thống qua file này. Nếu cấu hình DDR sai ở đây thì board sẽ chết ở R3, kể cả khi mọi bước build phía sau đều thành công. **Vivado phải cùng phiên bản với PetaLinux (2021.1).**
 
@@ -65,7 +71,9 @@ Mọi thông số phần cứng của board đều đi vào hệ thống qua fil
 | **PetaLinux làm gì bên dưới** | Chép `.xsa` vào `project-spec/hw-description/`; chạy XSCT để đọc phần cứng: danh sách ngoại vi PS, IP trên PL, địa chỉ, UART, bộ nhớ → sinh `project-spec/configs/config` và mở menu cấu hình hệ thống |
 | **Đầu ra** | Khung project `$P/` (`project-spec/`, `components/`, `config.project`) |
 | **Kiểm tra** | `ls $P/project-spec/hw-description/` thấy `.xsa`; menu hiện đúng tên UART/ethernet của thiết kế |
-| **Trạng thái** | Chưa làm (T5) |
+| **Tiến độ** | Chưa làm (T5) |
+| **Kết quả thực tế** | *(điền sau T5)* |
+| **Vấn đề gặp & xử lý** | *(điền sau T5)* |
 
 ### B3. Cấu hình hệ thống (`petalinux-config`)
 
@@ -82,6 +90,9 @@ Mọi thông số phần cứng của board đều đi vào hệ thống qua fil
 |---|---|
 | **Đầu ra** | `$P/project-spec/configs/config` |
 | **Kiểm tra** | `grep -E 'ROOTFS_EXT4|SDROOT_DEV|USER_LAYER' project-spec/configs/config` |
+| **Tiến độ** | Chưa làm: T5 (console), T7 (rootfs EXT4, bootargs), T8 (user layer) |
+| **Kết quả thực tế** | *(điền sau T5, T7, T8)* |
+| **Vấn đề gặp & xử lý** | *(điền sau T5, T7, T8)* |
 
 ### B4. U-Boot
 
@@ -92,7 +103,9 @@ Mọi thông số phần cứng của board đều đi vào hệ thống qua fil
 | **PetaLinux làm gì bên dưới** | Build recipe `u-boot-xlnx` (2021.01, defconfig `xilinx_zynq_virt`), sinh thêm `boot.scr` từ mẫu `u-boot-zynq-scr` |
 | **Đầu ra** | `images/linux/u-boot.elf`, `images/linux/boot.scr` |
 | **Kiểm tra** | `file images/linux/u-boot.elf` là ARM ELF |
-| **Trạng thái** | Chưa làm (T5) |
+| **Tiến độ** | Chưa làm (T5) |
+| **Kết quả thực tế** | *(điền sau T5)* |
+| **Vấn đề gặp & xử lý** | *(điền sau T5)* |
 
 U-Boot của Xilinx bật `CONFIG_OF_BOARD`: khi chạy, nó lấy Device Tree ở địa chỉ `0x100000` (`CONFIG_XILINX_OF_BOARD_DTB_ADDR`), nơi FSBL đặt sẵn từ `BOOT.BIN`. Nhờ vậy một bản build U-Boot dùng chung được cho mọi board Zynq-7000.
 
@@ -105,7 +118,9 @@ U-Boot của Xilinx bật `CONFIG_OF_BOARD`: khi chạy, nó lấy Device Tree �
 | **PetaLinux làm gì bên dưới** | Yocto trộn defconfig với các fragment, biên dịch kernel, đóng gói kernel và `system.dtb` vào ảnh FIT `image.ub` |
 | **Đầu ra** | `images/linux/zImage`, `images/linux/image.ub` |
 | **Kiểm tra** | Grep từng option của `modem.cfg` trong `.config` của kernel (`find build/tmp/work -path '*linux-xlnx*' -name .config`) |
-| **Trạng thái** | Chưa làm (T8) |
+| **Tiến độ** | Chưa làm (T8) |
+| **Kết quả thực tế** | *(điền sau T8: số option fragment đã áp dụng, kích thước kernel)* |
+| **Vấn đề gặp & xử lý** | *(điền sau T8)* |
 
 ### B6. Device Tree
 
@@ -115,11 +130,13 @@ U-Boot của Xilinx bật `CONFIG_OF_BOARD`: khi chạy, nó lấy Device Tree �
 | **PetaLinux làm gì bên dưới** | Chạy XSCT + `device-tree-xlnx` để sinh `system-top.dts`, `zynq-7000.dtsi`, `pcw.dtsi` (ngoại vi PS), `pl.dtsi` (IP trên PL) vào `components/plnx_workspace/device-tree/device-tree/`; ghép thêm `system-user.dtsi`; biên dịch bằng `dtc` |
 | **Đầu ra** | `images/linux/system.dtb` (nằm trong `image.ub` và trong `BOOT.BIN`) |
 | **Kiểm tra** | `dtc -I dtb -O dts images/linux/system.dtb | grep -A3 chosen`; có node ethernet, node IP modem |
-| **Trạng thái** | Chưa làm: T6 (PHY Ethernet), T10 (node IP modem) |
+| **Tiến độ** | Chưa làm: T6 (PHY Ethernet), T10 (node IP modem) |
+| **Kết quả thực tế** | *(điền sau T6, T10)* |
+| **Vấn đề gặp & xử lý** | *(điền sau T6, T10)* |
 
 Nguyên tắc: **không sửa file trong `components/`**, vì chúng bị sinh lại mỗi lần build. Mọi chỉnh tay đặt trong `system-user.dtsi`, nhờ vậy xuất lại `.xsa` không làm mất phần đã sửa.
 
-**Ethernet E316** (công thức đã ping được ở Lab 8, chi tiết trong `_ZynQ_Study/_ZynQ_Study/8.E316_B_LINUX/1.Petalinux_HUONG_DAN.txt` mục 10.7):
+**Ethernet E316** (cấu hình tham khảo, đã kiểm chứng trong giai đoạn học trước trên cùng board; ghi chú gốc: `_ZynQ_Study/_ZynQ_Study/8.E316_B_LINUX/1.Petalinux_HUONG_DAN.txt` mục 10.7):
 
 - `&gmii_to_rgmii_0 { status = "disabled"; };` (tắt node sinh tự động)
 - PHY RTL8211F ở MDIO địa chỉ 1, `compatible = "ethernet-phy-id001c.c916"`
@@ -138,11 +155,13 @@ Không dùng `/delete-node/` cho converter (làm sai thứ tự probe).
 | **PetaLinux làm gì bên dưới** | Yocto build từng gói (BusyBox, glibc, ...), cài vào ảnh rootfs |
 | **Đầu ra** | `images/linux/rootfs.ext4`, `rootfs.tar.gz` |
 | **Kiểm tra** | `debugfs -R 'ls -l /usr/bin' images/linux/rootfs.ext4`; tìm `modem-regs.ko` trong `/lib/modules/` |
-| **Trạng thái** | Chưa làm: T7 (rootfs EXT4), T9 (gói + zynq-selftest), T10 (driver `modem-regs`) |
+| **Tiến độ** | Chưa làm: T7 (rootfs EXT4), T9 (gói + zynq-selftest), T10 (driver `modem-regs`) |
+| **Kết quả thực tế** | *(điền sau T7, T9, T10: kích thước rootfs, danh sách gói)* |
+| **Vấn đề gặp & xử lý** | *(điền sau T7, T9, T10)* |
 
 ### B8. Build và đóng gói
 
-Máy build còn ~420 GB nên không bắt buộc, nhưng nên thêm dòng sau vào `project-spec/meta-user/conf/petalinuxbsp.conf` để Yocto xóa thư mục tạm của từng gói ngay khi build xong (thư mục `build/` giảm từ ~40–50 GB còn ~15–25 GB; đổi lại khó xem log khi một gói build lỗi — tạm bỏ dòng này khi cần gỡ lỗi):
+Không bắt buộc khi ổ đĩa còn rộng, nhưng nên thêm dòng sau vào `project-spec/meta-user/conf/petalinuxbsp.conf` để Yocto xóa thư mục tạm của từng gói ngay khi build xong (thư mục `build/` giảm từ ~40–50 GB còn ~15–25 GB; đổi lại khó xem log khi một gói build lỗi — tạm bỏ dòng này khi cần gỡ lỗi):
 
 ```
 INHERIT += "rm_work"
@@ -160,7 +179,9 @@ petalinux-package --wic
 | **PetaLinux làm gì bên dưới** | `petalinux-build` chạy `bitbake` cho FSBL, U-Boot, DT, kernel, rootfs. `--boot` sinh file `.bif` rồi gọi `bootgen`. `--wic` dùng Yocto `wic` tạo ảnh thẻ SD từ các file trong `images/linux/` |
 | **Đầu ra** | `BOOT.BIN`, `petalinux-sdimage.wic` (cùng các file ở bảng dưới) |
 | **Kiểm tra** | `bootgen -arch zynq -read images/linux/BOOT.BIN` liệt kê FSBL, bitstream, U-Boot, DTB; `sfdisk -l images/linux/petalinux-sdimage.wic` thấy 2 phân vùng |
-| **Trạng thái** | Chưa làm: T5 (`BOOT.BIN` + `image.ub`), T7 (`.wic`) |
+| **Tiến độ** | Chưa làm: T5 (`BOOT.BIN` + `image.ub`), T7 (`.wic`) |
+| **Kết quả thực tế** | *(điền sau T5, T7: thời gian build lần đầu và build lại, dung lượng `build/`, `downloads/`, `sstate-cache/`, kích thước từng file đầu ra)* |
+| **Vấn đề gặp & xử lý** | *(điền sau T5, T7)* |
 
 ```
 BOOT.BIN (bootgen)                         petalinux-sdimage.wic
@@ -174,14 +195,14 @@ BOOT.BIN (bootgen)                         petalinux-sdimage.wic
                                            └─────────────────────────────────┘
 ```
 
-> **Cần kiểm tra lại:** việc PetaLinux tự đưa `system.dtb @ 0x100000` vào `BOOT.BIN`, và danh sách file trong phân vùng FAT của `.wic`, mình ghi theo hành vi mặc định của PetaLinux (chưa kiểm trên 2021.1). Xác nhận bằng `bootgen -read` và mount thử phân vùng 1. Nếu cần chỉnh thì dùng `--add`/`--bootfiles`.
+> **Cần kiểm chứng:** việc PetaLinux tự đưa `system.dtb @ 0x100000` vào `BOOT.BIN`, và danh sách file trong phân vùng FAT của `.wic`, đang ghi theo hành vi mặc định của PetaLinux (chưa kiểm trên 2021.1). Xác nhận bằng `bootgen -read` và mount thử phân vùng 1. Nếu cần chỉnh thì dùng `--add`/`--bootfiles`.
 
 ### B9. Triển khai
 
 | Cách | Lệnh | Dùng khi |
 |------|------|----------|
 | Thẻ SD | (1) chạy `lsblk -d -o NAME,SIZE,MODEL,TRAN` **trước và sau** khi cắm thẻ; thiết bị mới xuất hiện (cột `TRAN` là `usb`, dung lượng bằng thẻ) là `/dev/sdX` (2) `sudo dd if=images/linux/petalinux-sdimage.wic of=/dev/sdX bs=4M conv=fsync status=progress` (3) đặt boot mode **SD** | cách chính; ghi nhầm thiết bị sẽ **xóa sạch ổ đó** |
-| JTAG | `petalinux-boot --jtag --kernel --fpga` (cần `hw_server` và cáp JTAG; `hw_server` có sẵn trong Vivado trên máy build; cài driver cáp bằng script `install_drivers` của Vivado) | bring-up board lần đầu, chưa tin thẻ SD |
+| JTAG | `petalinux-boot --jtag --kernel --fpga` (cần `hw_server` và cáp JTAG; `hw_server` có sẵn trong Vivado trên máy build; cài driver cáp bằng script `install_drivers` của Vivado, chạy từ thư mục của script) | bring-up board lần đầu, chưa tin thẻ SD |
 | QEMU | `petalinux-boot --qemu --kernel` | không cần board; mô phỏng PS, **không có PL** |
 
 Trước khi cấp nguồn, cắm UART-USB và mở `picocom -b 115200 /dev/ttyUSB0` để xem log từ R3.
@@ -263,7 +284,7 @@ Trước khi cấp nguồn, cắm UART-USB và mở `picocom -b 115200 /dev/ttyU
    - `dropbear`: SSH.
 2. Chạy `getty` trên `ttyPS0` và hiện dấu nhắc login (PetaLinux 2021.1 mặc định bật `debug-tweaks`: user `root`, mật khẩu `root`; tắt `debug-tweaks` trước khi dùng thật).
 
-**Kiểm tra:** chạy `zynq-selftest`. Lệnh in PASS/WARN/FAIL cho CPU, RAM, kernel log, rootfs, UART, SD, Ethernet, QSPI, PL và driver modem, và trả mã thoát khác 0 nếu có FAIL (Task 4).
+**Kiểm tra:** chạy `zynq-selftest`. Lệnh in PASS/WARN/FAIL cho CPU, RAM, kernel log, rootfs, UART, SD, Ethernet, QSPI, PL và driver modem, và trả mã thoát khác 0 nếu có FAIL (T9).
 
 **Lỗi ở bước này:** không có dấu nhắc login thì xem lại cổng serial chọn ở B3. Không có mạng thì xem `ip link`, `ethtool eth0` và PHY trong DT.
 
@@ -276,6 +297,18 @@ Trước khi cấp nguồn, cắm UART-USB và mở `picocom -b 115200 /dev/ttyU
 - Cấu hình front-end RF qua SPI/I2C (`spidev`, `i2c-dev`) hoặc driver IIO. AD9361 trên E316 đã chạy được bằng XSA vàng + `meta-adi` 2021_R1 (lộ trình học, Lab 9); chưa đưa vào project này.
 - Ứng dụng mới tạo bằng `petalinux-create -t apps` rồi đưa vào `meta-modem`.
 - Có thể nạp lại bitstream khi đang chạy qua `fpga_manager` và DT overlay.
+
+### Kết quả khởi động trên E316
+
+Điền từ log UART có dấu thời gian (`printk.time=1`, hoặc ghi log bằng `picocom` kèm giờ hệ thống). Log thô: `tasks/logs/`.
+
+| Mốc | Dòng log nhận biết | Thời điểm (s từ khi cấp nguồn) | Lần đo | Ghi chú |
+|-----|--------------------|-------------------------------|--------|---------|
+| R3 FSBL bắt đầu | `Xilinx First Stage Boot Loader` | *(T5)* | | |
+| R4 U-Boot bắt đầu | `U-Boot 2021.01` | *(T5)* | | |
+| R5 Kernel bắt đầu | `Booting Linux on physical CPU 0x0` | *(T5)* | | |
+| R5 Mount rootfs | `VFS: Mounted root` | *(T7)* | | |
+| R6 Dấu nhắc login | `login:` | *(T5, T7)* | | Chỉ tiêu: < 10 s (README §6.3) |
 
 ---
 

@@ -7,7 +7,7 @@ Repo tài liệu + layer Yocto để dựng Linux bằng PetaLinux cho Zynq-7000
 - Vivado / Vitis / **PetaLinux 2021.1** — không đổi phiên bản giữa chừng; Vivado và PetaLinux phải cùng bản.
 - Yocto **gatesgarth**: recipe dùng cú pháp `_append` / `_prepend` (chưa có `:append`), license `GPL-2.0` (chưa có `GPL-2.0-only`), `LAYERSERIES_COMPAT_modem = "gatesgarth"`.
 - Kernel `linux-xlnx` 5.10, U-Boot 2021.01. AD9361 cần `meta-adi` nhánh **2021_R1**.
-- Máy build: Ubuntu **20.04.6**, 12 luồng, 15 GB RAM, ~419 GB trống, chưa có swap. Vivado 2021.1 ML Standard (chỉ Zynq-7000) cài trên máy build tại `/tools/Xilinx` (bắt đầu 23/10); không chạy Vivado và `petalinux-build` cùng lúc.
+- Máy build: Ubuntu **20.04.6**, 12 luồng, 15 GB RAM, ~419 GB trống, chưa có swap. Vivado 2021.1 ML Standard (chỉ Zynq-7000) cài trên máy build tại `/tools/Xilinx` (xong 23/10, 27 GB; `source /tools/Xilinx/Vivado/2021.1/settings64.sh`); không chạy Vivado và `petalinux-build` cùng lúc.
 - Cài PetaLinux tại `/opt/pkg/petalinux/2021.1`; mỗi terminal: `source /opt/pkg/petalinux/2021.1/settings.sh /opt/pkg/petalinux/2021.1`.
 
 ## Cấu trúc
@@ -31,6 +31,7 @@ Repo tài liệu + layer Yocto để dựng Linux bằng PetaLinux cho Zynq-7000
 - Trả lời và viết tài liệu bằng tiếng Việt.
 - Đổi phiên bản / thông số phần cứng thì sửa đồng bộ README, docs, tasks/plan.md, tasks/todo.md, và **file này**.
 - Nhật ký `tasks/nhat-ky.md`: chỉ thêm mục mới theo ngày, không sửa mục cũ (đính chính ghi ở mục mới).
+- **Viết để làm báo cáo** (người dùng chốt 23/10): `docs/quy-trinh-xay-dung.md` là nguồn chính cho chương phương pháp/quy trình của báo cáo nghiên cứu; dàn ý ở `docs/bao-cao-dan-y.md`. Xong mỗi task thì điền dòng *Kết quả thực tế* (số liệu + điều kiện đo + đường dẫn log) và *Vấn đề gặp & xử lý* (hiện tượng, nguyên nhân, cách xử lý) của các bước B/R liên quan; lưu log thô vào `tasks/logs/`, hình vào `docs/hinh/`; cập nhật cột “Trạng thái” trong dàn ý. Văn phong tài liệu kỹ thuật, không dùng ngôi thứ nhất.
 - **Khi người dùng nói “update”** (người dùng chốt 23/10, áp dụng mọi lần, không cần hỏi lại):
   1. Đồng bộ toàn dự án: rà README, `docs/*`, `tasks/plan.md` + `tasks/todo.md` (tick tiến độ thật), `tasks/nhat-ky.md` (mục ngày hôm nay), `CLAUDE.md`, `meta-modem/` cho khớp nhau (phiên bản, số task, tên layer, đường dẫn, trạng thái).
   2. Không đưa `_ZynQ_Study/` và `graphs/` lên git.
