@@ -1,233 +1,275 @@
-# Task list (PetaLinux 2023.2)
+# Task list (PetaLinux 2021.1, E316, làm từ đầu)
 
-Plan: [plan.md](plan.md). Quy trình: [docs/quy-trinh-xay-dung.md](../docs/quy-trinh-xay-dung.md). Mọi lệnh chạy code dự án (`petalinux-*`, script, qemu, ghi thẻ SD) đều phải hỏi người dùng trước.
+Plan: [plan.md](plan.md). Quy trình: [docs/quy-trinh-xay-dung.md](../docs/quy-trinh-xay-dung.md). Mọi lệnh chạy code dự án (`petalinux-*`, Vivado batch, ghi thẻ SD, chạy trên board) đều phải hỏi người dùng trước.
+
+`_ZynQ_Study/` **chỉ để tham khảo**: được đọc để đối chiếu thông số, không chép file, XSA hay image từ đó.
+
+Quy ước: `$P` = `plnx/e316`; mỗi terminal PetaLinux chạy `source /opt/pkg/petalinux/2021.1/settings.sh /opt/pkg/petalinux/2021.1` và `stty rows 40 cols 120` trước menuconfig. Vivado: `source /tools/Xilinx/Vivado/2021.1/settings64.sh`.
 
 ---
 
-## Phase 1: Môi trường + QEMU
+## Phase 1: Công cụ + đường boot tối thiểu
 
-## Task 1: Cài PetaLinux 2023.2
+## Task 1: Máy build sẵn sàng *(người dùng)*
 
-**Description:** Người dùng tải `petalinux-v2023.2-*-installer.run` và BSP `xilinx-zc702-v2023.2-final.bsp` từ trang AMD. Cài gói host theo UG1144, rồi cài PetaLinux vào `~/petalinux/2023.2` (không dùng root). `.gitignore` ở gốc đã bỏ qua `plnx/zc702/`, `*.bsp`, `*.run`. Phần sinh tự động bên trong mỗi project do `.gitignore` riêng của `petalinux-create` lo; sau T7 chạy `git status` để xác nhận chỉ còn `project-spec/` và file cấu hình.
+**Description:** Đổi `/bin/sh` sang bash; cài 29 gói host của PetaLinux (danh sách đã kiểm, xem [docs/lo-trinh.md](../docs/lo-trinh.md) mục 2) và 4 gói của Vivado (`libtinfo5 libncurses5 default-jre libcanberra-gtk-module`); tạo `/opt/pkg` và `/tools/Xilinx` thuộc user; thêm user vào `dialout`. Tải `petalinux-v2021.1-final-installer.run` và `Xilinx_Unified_2021.1_0610_2318_Lin64.bin` (web installer) từ AMD Archive 2021.1; tạo token đăng nhập bằng `xsetup -b AuthTokenGen`.
 
 **Acceptance criteria:**
-- [ ] `source ~/petalinux/2023.2/settings.sh` không lỗi
+- [ ] `readlink -f /bin/sh` ra `/usr/bin/bash`; không còn gói nào trong 33 gói báo thiếu
+- [ ] Có 2 bộ cài; `/opt/pkg/petalinux/2021.1` và `/tools/Xilinx` thuộc user
+- [ ] `xsetup -b AuthTokenGen` báo tạo token thành công
+
+**Verification:**
+- [ ] Manual check: vòng `dpkg-query` kiểm 33 gói; `ls -ld /opt/pkg/petalinux/2021.1 /tools/Xilinx`; `id | grep dialout`
+
+**Dependencies:** None
+
+**Files likely touched:** không có file trong repo
+
+**Estimated scope:** XS
+
+## Task 2: Cài PetaLinux 2021.1
+
+**Description:** `./petalinux-v2021.1-final-installer.run -d /opt/pkg/petalinux/2021.1` (không root).
+
+**Acceptance criteria:**
+- [ ] `source …/settings.sh …` không lỗi
 - [ ] `petalinux-create --help` chạy được
 
 **Verification:**
-- [ ] Manual check: `which petalinux-build petalinux-create petalinux-boot`
-
-**Dependencies:** None (bộ cài do người dùng tải)
-
-**Files likely touched:** `.gitignore`
-
-**Estimated scope:** S
-
-## Task 2: Project BSP ZC702 → build → QEMU
-
-**Description:** `petalinux-create -t project -s xilinx-zc702-v2023.2-final.bsp -n zc702` trong `plnx/`. Thêm `INHERIT += "rm_work"` vào `project-spec/meta-user/conf/petalinuxbsp.conf` (tiết kiệm ổ đĩa). Chạy `petalinux-build` (lần đầu 1–2 giờ, chạy nền), rồi `petalinux-boot --qemu --kernel`. Mục đích: xác nhận máy build và QEMU hoạt động trước khi tùy biến.
-
-**Acceptance criteria:**
-- [ ] `petalinux-build` thành công; `images/linux/` có `image.ub`, `u-boot.elf`, `zynq_fsbl.elf`
-- [ ] QEMU in log kernel trên `ttyPS0` và tới dấu nhắc login; đăng nhập được
-
-**Verification:**
-- [ ] Build succeeds: `petalinux-build` (hỏi người dùng trước khi chạy)
-- [ ] Manual check: `petalinux-boot --qemu --kernel`, đăng nhập, chạy `uname -a; cat /proc/cpuinfo | grep -c processor`
+- [ ] Manual check: `which petalinux-build petalinux-create petalinux-package`
 
 **Dependencies:** T1
 
-**Files likely touched:** không có file commit (project ZC702 nằm trong `.gitignore`); ghi chú kết quả vào `tasks/logs/`
+**Files likely touched:** không có file trong repo
+
+**Estimated scope:** XS
+
+## Task 3: Cài Vivado 2021.1 (ML Standard, Zynq-7000)
+
+**Description:** `xsetup -b ConfigGen` sinh file cấu hình; sửa để chỉ chọn Vivado, edition ML Standard, họ thiết bị Zynq-7000, đích `/tools/Xilinx`. Cài ở chế độ batch, chạy nền (1–2 giờ). Người dùng chạy script cài driver cáp JTAG bằng sudo sau khi cài xong. Không chạy cùng lúc với `petalinux-build`.
+
+**Acceptance criteria:**
+- [ ] `vivado -version` in `v2021.1`
+- [ ] `vivado -mode batch -source <tcl tạo project rỗng xc7z020clg400-1>` chạy không lỗi
+- [ ] Dung lượng `/tools/Xilinx` ghi vào nhật ký
+
+**Verification:**
+- [ ] Manual check: lệnh trên + `du -sh /tools/Xilinx`; (khi cắm board) `hw_server` thấy cáp
+
+**Dependencies:** T1
+
+**Files likely touched:** không có file trong repo
 
 **Estimated scope:** S
 
+## Task 4: XSA tối thiểu cho E316 (PS: DDR, UART1, SD0)
+
+**Description:** Tạo project Vivado `hw/e316/vivado/` bằng script Tcl `hw/e316/create_project.tcl` (để tái lập được, không commit thư mục sinh ra). Block design chỉ có ZYNQ7 Processing System: part `xc7z020clg400-1`; DDR3 `MT41J256M16 RE-125`, bus 32-bit (thông số delay/board đối chiếu `system_bd.tcl` vàng trong `_ZynQ_Study/`, chỉ đọc); UART1 MIO 12–13 115200; SD0; tắt TTC0 và ngoại vi không dùng. Generate bitstream, Export Hardware kèm bitstream → `hw/e316/system.xsa`.
+
+**Acceptance criteria:**
+- [ ] `hw/e316/create_project.tcl` chạy lại từ đầu ra cùng XSA (tái lập được)
+- [ ] `unzip -l hw/e316/system.xsa` có `.bit`, `ps7_init.c/.tcl`, `.hwh`
+- [ ] Bảng đối chiếu thông số DDR/MIO (của mình vs tham khảo) ghi trong `hw/e316/README.md`
+
+**Verification:**
+- [ ] Build succeeds: `vivado -mode batch -source hw/e316/create_project.tcl` tới bước write_hw_platform
+- [ ] Manual check: `grep -E 'PCW_UART1|PCW_UIPARAM_DDR_PARTNO|PCW_SD0' ` trong `.hwh` khớp bảng đối chiếu
+
+**Dependencies:** T3
+
+**Files likely touched:**
+- `hw/e316/create_project.tcl`
+- `hw/e316/system.xsa`
+- `hw/e316/README.md`
+- `.gitignore`
+
+**Estimated scope:** M
+
+## Task 5: E316 boot tới login qua UART (INITRAMFS)
+
+**Description:** Trong `plnx/`: `petalinux-create -t project --template zynq -n e316`; trong `$P`: `petalinux-config --get-hw-description=../../hw/e316/system.xsa`, console `ps7_uart_1`, giữ rootfs INITRAMFS; thêm `INHERIT += "rm_work"`. `petalinux-build` (lần đầu 1–2 giờ); `petalinux-package --boot --fsbl images/linux/zynq_fsbl.elf --fpga images/linux/system.bit --u-boot --force`. Chép `BOOT.BIN`, `image.ub`, `boot.scr` lên phân vùng FAT, jumper SD, `picocom -b 115200 /dev/ttyUSB0`.
+
+**Acceptance criteria:**
+- [ ] Log UART đi qua FSBL → U-Boot 2021.01 → kernel 5.10 → login
+- [ ] Đăng nhập `root`/`root`; `grep -c processor /proc/cpuinfo` ra 2; `free -m` khớp DDR thiết kế
+- [ ] `cat /sys/class/fpga_manager/fpga0/state` là `operating`
+
+**Verification:**
+- [ ] Build succeeds: `petalinux-build` + `petalinux-package --boot`
+- [ ] Manual check: log `tasks/logs/t5-boot.log`; `bootgen -arch zynq -read images/linux/BOOT.BIN`; snapshot vào `$P/deploy/01_<ngày>_initramfs/`
+
+**Dependencies:** T2, T4
+
+**Files likely touched:**
+- `plnx/e316/project-spec/configs/config`
+- `plnx/e316/project-spec/meta-user/conf/petalinuxbsp.conf`
+
+**Estimated scope:** M
+
 ## Checkpoint 1
-- [ ] QEMU ZC702 boot tới login
-- [ ] Ghi lại thời gian build và dung lượng `plnx/zc702/build`
-- [ ] Người dùng duyệt trước khi sang Phase 2
+- [ ] E316 login UART bằng XSA + image tự làm
+- [ ] Ghi thời gian build đầu, dung lượng `$P/build`; người dùng duyệt
 
 ---
 
-## Phase 2: Layer meta-nckh
+## Phase 2: Hệ thống dùng được
 
-## Task 3: Layer `meta-nckh` + kernel fragment
+## Task 6: Ethernet + SSH (Vivado + DT)
 
-**Description:** Tạo layer `meta-nckh/` (`conf/layer.conf` với `LAYERSERIES_COMPAT` khớp Yocto của PetaLinux 2023.2). Thêm `recipes-kernel/linux/linux-xlnx_%.bbappend` + `linux-xlnx/nckh.cfg` (UIO, UIO_PDRV_GENIRQ, XILINX_DMA, FPGA_MGR_ZYNQ_FPGA, OF_OVERLAY, SPI_SPIDEV, I2C_CHARDEV, MTD_SPI_NOR, XILINX_XADC, PREEMPT, HIGH_RES_TIMERS). Thêm layer vào project ZC702 qua `petalinux-config → Yocto Settings → User Layers`.
+**Description:** Vivado (sửa `create_project.tcl`): ENET0 qua EMIO + MDIO EMIO, IP `gmii_to_rgmii` với clock FCLK_CLK2 200 MHz, ràng buộc chân RGMII trong `hw/e316/e316.xdc` (đối chiếu `system.xdc` tham khảo, chỉ đọc). Xuất XSA mới. PetaLinux: `--get-hw-description`, `system-user.dtsi` cho PHY RTL8211F @ MDIO 1 `rgmii-id`, converter `gmiitorgmii@8`, tắt `gmii_to_rgmii_0`; bật dropbear; `petalinux-package --boot` (FPGA đổi).
 
 **Acceptance criteria:**
-- [ ] `petalinux-build -c kernel` thành công
-- [ ] Mọi option trong `nckh.cfg` có giá trị đúng trong `.config` của kernel
-- [ ] Kernel vẫn boot được trên QEMU
+- [ ] `ip link show eth0` UP, có link
+- [ ] PC ping board; `ssh root@<IP>` vào được
+
+**Verification:**
+- [ ] Build succeeds: Vivado batch tới XSA; `petalinux-build` + `petalinux-package --boot --force`
+- [ ] Manual check: `dtc -I dtb -O dts images/linux/system.dtb | grep -B2 -A6 phy-mode`; ping + ssh; snapshot `deploy/02_<ngày>_eth/`
+
+**Dependencies:** T5
+
+**Files likely touched:**
+- `hw/e316/create_project.tcl`
+- `hw/e316/e316.xdc`
+- `hw/e316/system.xsa`
+- `plnx/e316/project-spec/meta-user/recipes-bsp/device-tree/files/system-user.dtsi`
+
+**Estimated scope:** M
+
+## Task 7: Rootfs EXT4 trên thẻ SD (`.wic`)
+
+**Description:** `petalinux-config`: rootfs EXT4, SD device `/dev/mmcblk0p2`, bootargs `console=ttyPS0,115200 earlycon root=/dev/mmcblk0p2 rw rootwait uio_pdrv_genirq.of_id=generic-uio`. Build, `petalinux-package --boot … --force`, `petalinux-package --wic`. Người dùng xác nhận `/dev/sdX` rồi ghi `dd`.
+
+**Acceptance criteria:**
+- [ ] `VFS: Mounted root (ext4 filesystem)`; `/` là `/dev/mmcblk0p2` rw
+- [ ] File `/root/t7-ok` còn sau reboot
+- [ ] Ethernet + SSH của T6 vẫn chạy
+
+**Verification:**
+- [ ] Build succeeds: `petalinux-build` + `--boot` + `--wic`
+- [ ] Manual check: `sfdisk -l images/linux/petalinux-sdimage.wic` thấy 2 phân vùng; log `tasks/logs/t7-ext4.log`
+
+**Dependencies:** T6
+
+**Files likely touched:**
+- `plnx/e316/project-spec/configs/config`
+
+**Estimated scope:** S
+
+## Task 8: Layer `meta-modem` + kernel fragment
+
+**Description:** User Layers thêm `${PROOT}/../../meta-modem`; build lại kernel với `modem.cfg`. Lần đầu kiểm `LAYERSERIES_COMPAT = "gatesgarth"`, `_append`, license `GPL-2.0`.
+
+**Acceptance criteria:**
+- [ ] Build có `meta-modem`, không cảnh báo compat
+- [ ] Mọi option của `modem.cfg` đúng trong `.config` kernel
+- [ ] Board boot lại; có `/sys/class/fpga_manager/fpga0`, `/dev/i2c-*`
 
 **Verification:**
 - [ ] Build succeeds: `petalinux-build -c kernel && petalinux-build`
-- [ ] Manual check: grep từng option trong `.config`; boot QEMU
+- [ ] Manual check: grep từng `CONFIG_*` của `modem.cfg` trong `.config` (`find build/tmp/work -path '*linux-xlnx*' -name .config`)
 
-**Dependencies:** T2
+**Dependencies:** T7
 
-**Files likely touched:** `meta-nckh/conf/layer.conf`, `meta-nckh/recipes-kernel/linux/linux-xlnx_%.bbappend`, `meta-nckh/recipes-kernel/linux/linux-xlnx/nckh.cfg`
-
-**Estimated scope:** S
-
-## Task 4: Gói rootfs + `zynq-selftest`
-
-**Description:** Tạo recipe `meta-nckh/recipes-apps/zynq-selftest/` (dựng từ mẫu `petalinux-create -t apps --template install`) cài script POSIX sh vào `/usr/bin/zynq-selftest`. Script kiểm tra các mục ở README §6.2, in PASS/WARN/FAIL và trả mã thoát khác 0 nếu có FAIL. Bật trong `petalinux-config -c rootfs`: dropbear, ethtool, iperf3, i2c-tools, spitools, mtd-utils, memtester, `zynq-selftest`; gói nào không có trong menu thì thêm vào `user-rootfsconfig`.
-
-**Acceptance criteria:**
-- [ ] Các tool có trên rootfs; SSH được vào QEMU
-- [ ] `zynq-selftest` trên QEMU: không FAIL ở CPU/RAM/kernel log/rootfs/UART/eth0; QSPI/PL/modem báo WARN
-- [ ] Mã thoát đúng (0 khi không có FAIL)
-
-**Verification:**
-- [ ] Manual check: trên QEMU chạy `zynq-selftest; echo $?`
-- [ ] Self-check: ép một mục FAIL, xác nhận mã thoát khác 0
-
-**Dependencies:** T3
-
-**Files likely touched:** `meta-nckh/recipes-apps/zynq-selftest/{zynq-selftest.bb,files/zynq-selftest}`, `plnx/zc702/project-spec/configs/rootfs_config`, `plnx/zc702/project-spec/meta-user/conf/user-rootfsconfig`
+**Files likely touched:**
+- `plnx/e316/project-spec/configs/config`
+- `meta-modem/conf/layer.conf`, `meta-modem/recipes-kernel/linux/*` (nếu cần sửa)
 
 **Estimated scope:** S
-
-## Task 5: Driver mẫu `modem-regs`
-
-**Description:** Tạo recipe `meta-nckh/recipes-modules/modem-regs/` (dựng từ mẫu `petalinux-create -t modules`). Đây là platform driver khớp `compatible = "nckh,modem-regs"`: ioremap vùng thanh ghi, tạo misc device `/dev/modem_<addr>`, read/write theo word 32-bit căn lề, `llseek` giới hạn trong vùng thanh ghi. Bật trong `petalinux-config -c rootfs`.
-
-**Acceptance criteria:**
-- [ ] Module build không có warning; `modinfo modem-regs` có alias `of:*nckh,modem-regs*`
-- [ ] `modprobe modem-regs` trên QEMU thành công, không lỗi trong `dmesg`; `rmmod` sạch
-- [ ] Đọc/ghi lệch căn lề trả `-EINVAL` (kiểm tra trên board ở T9)
-
-**Verification:**
-- [ ] Build succeeds: `petalinux-build -c modem-regs && petalinux-build`
-- [ ] Manual check: trên QEMU chạy `modprobe modem-regs && dmesg | tail && rmmod modem-regs`
-
-**Dependencies:** T3
-
-**Files likely touched:** `meta-nckh/recipes-modules/modem-regs/{modem-regs.bb,files/modem-regs.c,files/Makefile,files/COPYING}`
-
-**Estimated scope:** M
 
 ## Checkpoint 2
-- [ ] QEMU ZC702 với `meta-nckh`: `zynq-selftest` không FAIL ở các mục PS mà QEMU mô phỏng
-- [ ] Commit + push `meta-nckh/`
-- [ ] Người dùng duyệt trước khi sang phần cứng
+- [ ] Boot từ `.wic`, SSH được, dữ liệu còn sau reboot, kernel có option modem
+- [ ] `git status` chỉ còn file nguồn (`project-spec/`, `hw/e316/*.tcl|*.xdc|*.xsa|README.md`)
+- [ ] Commit + push; người dùng duyệt
 
 ---
 
-## Phase 3: Board E316
+## Phase 3: Kiểm thử và driver modem
 
-## Task 6: Có `system.xsa` cho E316 *(người dùng làm, Claude hỗ trợ)*
+## Task 9: `zynq-selftest` chạy trên board
 
-**Description:** Vivado **không cài trên máy build**. Lấy `.xsa` bằng một trong hai cách: (a) ở máy khác có Vivado 2023.2, tạo block design ZYNQ7 PS theo schematic E316 (DDR, MIO: UART, SD0, QSPI, ENET0, I2C), chưa có IP trên PL, generate bitstream, export hardware kèm bitstream; (b) dùng `.xsa`/BSP bản 2023.2 do nhà cung cấp board phát hành. Chép file vào `hw/e316/system.xsa` trên máy build.
-
-**Acceptance criteria:**
-- [ ] Có `hw/e316/system.xsa` chứa `.bit` và `ps7_init`
-- [ ] Ghi cấu hình thật (DDR part, UART console, PHY, jumper boot mode) vào README §2.2
-
-**Verification:**
-- [ ] Manual check: `unzip -l hw/e316/system.xsa`
-
-**Dependencies:** None (làm song song Phase 1–2; **hạn chót 23/10**)
-
-**Files likely touched:** `hw/e316/system.xsa`, `README.md`
-
-**Estimated scope:** S
-
-## Task 7: Project PetaLinux E316
-
-**Description:** Xóa `plnx/zc702/` trước (máy chỉ đủ chỗ cho một project; `meta-nckh` đã nằm ngoài nên không mất gì). `petalinux-create -t project --template zynq -n e316` trong `plnx/`, `petalinux-config --get-hw-description=../../hw/e316/system.xsa`, thêm `INHERIT += "rm_work"` vào `petalinuxbsp.conf`. Cấu hình theo docs B3: UART console, rootfs EXT4 `/dev/mmcblk0p2`, bootargs có `generic-uio`, user layer `meta-nckh`. Chép cấu hình rootfs đã chốt ở T4. Viết `system-user.dtsi` (PHY Ethernet, flash QSPI + phân vùng, node IP modem dạng chú thích).
+**Description:** Bật `zynq-selftest`, ethtool, iperf3, i2c-tools, spitools, mtd-utils, memtester trong rootfs (thiếu trong menu thì thêm vào `user-rootfsconfig`). Chạy với `EXPECT_CPUS=2 EXPECT_MEM_MB=<DDR thiết kế> PING_HOST=<IP PC>`.
 
 **Acceptance criteria:**
-- [ ] `project-spec/configs/config` có `ROOTFS_EXT4`, `SDROOT_DEV=/dev/mmcblk0p2`, user layer `meta-nckh`
-- [ ] `petalinux-build -c device-tree` thành công; `system.dtb` có `chosen/bootargs` đúng
+- [ ] PASS: CPU, RAM, kernel log, rootfs rw, UART, SD, eth0 + ping, PL `operating`
+- [ ] Mục modem báo WARN (chưa có IP); ép FAIL thì mã thoát ≠ 0
 
 **Verification:**
-- [ ] Build succeeds: `petalinux-build -c device-tree`
-- [ ] Manual check: `dtc -I dtb -O dts images/linux/system.dtb | grep -A3 chosen`
-
-**Dependencies:** T5, T6
-
-**Files likely touched:** `plnx/e316/project-spec/configs/{config,rootfs_config}`, `plnx/e316/project-spec/meta-user/recipes-bsp/device-tree/files/system-user.dtsi`, `plnx/e316/project-spec/meta-user/conf/user-rootfsconfig`
-
-**Estimated scope:** M
-
-## Task 8: Build, đóng gói, boot E316 từ thẻ SD
-
-**Description:** `petalinux-build` → `petalinux-package --boot --fsbl ... --fpga ... --u-boot --force` → `petalinux-package --wic`. Ghi `.wic` ra thẻ SD (người dùng xác nhận đúng `/dev/sdX`), đặt boot mode SD, boot E316. Nếu không lên, thử `petalinux-boot --jtag` để khoanh vùng.
-
-**Acceptance criteria:**
-- [ ] `bootgen -arch zynq -read BOOT.BIN` liệt kê FSBL, bitstream, U-Boot, DTB@0x100000
-- [ ] E316 in log FSBL → U-Boot → kernel trên UART, tới dấu nhắc login
-- [ ] `zynq-selftest` PASS: CPU, RAM, kernel log, rootfs, UART, SD, eth0 có link, PL `operating`
-
-**Verification:**
-- [ ] Build succeeds: `petalinux-build` + 2 lệnh `petalinux-package`
-- [ ] Manual check: lưu log UART vào `tasks/logs/`; chạy `zynq-selftest`
-
-**Dependencies:** T4, T7
-
-**Files likely touched:** `plnx/e316/project-spec/meta-user/recipes-bsp/device-tree/files/system-user.dtsi`, `tasks/logs/`
-
-**Estimated scope:** S
-
-## Checkpoint 3
-- [ ] E316 boot tới login từ thẻ SD; `zynq-selftest` PASS các mục PS
-- [ ] README §2.2 cập nhật thông số thật của E316
-- [ ] Commit + push `plnx/e316/project-spec/`; người dùng duyệt
-
----
-
-## Phase 4: Modem IP, QSPI, đo đạc
-
-## Task 9: IP thanh ghi trên PL + `modem-regs` trên board
-
-**Description:** Ở máy có Vivado (máy build không có), thêm một IP AXI-Lite (IP modem thật, hoặc IP thanh ghi giả có thanh ghi version cố định), xuất lại `.xsa`, chạy `petalinux-config --get-hw-description`, bật node `compatible = "nckh,modem-regs"` trong `system-user.dtsi`.
-
-**Acceptance criteria:**
-- [ ] `/dev/modem_*` xuất hiện khi boot
-- [ ] Đọc thanh ghi version ra đúng giá trị; ghi rồi đọc lại thanh ghi scratch thấy khớp
-- [ ] Đọc/ghi lệch căn lề trả `EINVAL`
-
-**Verification:**
-- [ ] Manual check: `dd if=/dev/modem_* bs=4 count=1 | hexdump`; mục modem trong `zynq-selftest` PASS
-
-**Dependencies:** T5, T8
-
-**Files likely touched:** `hw/e316/system.xsa`, `plnx/e316/project-spec/meta-user/recipes-bsp/device-tree/files/system-user.dtsi`, `meta-nckh/recipes-apps/zynq-selftest/files/zynq-selftest`
-
-**Estimated scope:** S
-
-## Task 10: Boot từ QSPI *(ngoài phạm vi lịch 1 tuần, chỉ làm nếu còn thời gian)*
-
-**Description:** Khai báo phân vùng QSPI (`petalinux-config → Subsystem AUTO Hardware Settings → Flash Settings`), ghi `BOOT.BIN` bằng `flashcp` trên board, boot với boot mode QSPI; rootfs vẫn trên thẻ SD.
-
-**Acceptance criteria:**
-- [ ] `/proc/mtd` liệt kê đúng các phân vùng
-- [ ] Boot mode QSPI: U-Boot chạy từ QSPI, boot tới login
-
-**Verification:**
-- [ ] Manual check: `cat /proc/mtd`; log UART khi boot từ QSPI
+- [ ] Build succeeds: `petalinux-build`
+- [ ] Manual check: `zynq-selftest; echo $?`, log `tasks/logs/t9-selftest.log`
 
 **Dependencies:** T8
 
-**Files likely touched:** `plnx/e316/project-spec/configs/config`, `README.md`
+**Files likely touched:**
+- `plnx/e316/project-spec/configs/rootfs_config`
+- `plnx/e316/project-spec/meta-user/conf/user-rootfsconfig`
 
 **Estimated scope:** S
 
-## Task 11: Đo đạc + báo cáo kiểm thử
+## Task 10: IP AXI-Lite (version + scratch) + `modem-regs`
 
-**Description:** Đo các chỉ số ở README §6.3: boot time, iperf3, kích thước rootfs, RAM trống. Chạy liên tục khoảng 12 giờ qua đêm và khởi động lại 20 lần (bản rút gọn cho lịch 1 tuần; bản đầy đủ là 24 giờ và 100 lần). Ghi kết quả vào `docs/test-report.md`.
+**Description:** Vivado: tạo IP AXI4-Lite (thanh ghi 0 = version cố định, thanh ghi 1 = scratch), nối GP0, gán địa chỉ, xuất XSA. PetaLinux: `--get-hw-description`, node `compatible = "modem,modem-regs"` trong `system-user.dtsi`, bật gói `modem-regs`, `petalinux-package --boot`; cập nhật mục modem của `zynq-selftest` kiểm giá trị version.
 
 **Acceptance criteria:**
-- [ ] Có số đo thật cho từng chỉ số, so với mục tiêu
-- [ ] 20/20 lần reboot thành công, hoặc ghi rõ các lần lỗi
+- [ ] `/dev/modem_<địa chỉ>` có; đọc thanh ghi 0 đúng version; scratch ghi/đọc khớp
+- [ ] Truy cập lệch căn lề trả `EINVAL`; `rmmod`/`modprobe` sạch
+- [ ] `zynq-selftest` mục modem PASS
 
 **Verification:**
-- [ ] Manual check: log thô lưu trong `tasks/logs/`, báo cáo trích dẫn đúng số
+- [ ] Build succeeds: Vivado batch tới XSA; `petalinux-build` + `--boot --force` + `--wic`
+- [ ] Manual check: `dd if=/dev/modem_<addr> bs=4 count=1 | hexdump -C`; log `tasks/logs/t10-ip.log`
 
-**Dependencies:** T8 (T9, T10 nếu đo cả các phần đó)
+**Dependencies:** T8 (T9 để cập nhật selftest)
 
-**Files likely touched:** `docs/test-report.md`
+**Files likely touched:**
+- `hw/e316/create_project.tcl`, `hw/e316/ip/` (nguồn IP), `hw/e316/system.xsa`
+- `plnx/e316/project-spec/meta-user/recipes-bsp/device-tree/files/system-user.dtsi`
+- `meta-modem/recipes-apps/zynq-selftest/files/zynq-selftest`
+
+**Estimated scope:** M
+
+## Checkpoint 3
+- [ ] selftest PASS PS + PL + modem; driver kiểm trên phần cứng thật
+- [ ] Commit + push; người dùng duyệt
+
+---
+
+## Phase 4: Đo đạc
+
+## Task 11: Đo đạc + báo cáo kiểm thử
+
+**Description:** Đo theo README §6.3: boot time (`printk.time=1`, mốc log UART), `iperf3` hai chiều, dung lượng rootfs, RAM trống; chạy ~12 giờ + reboot 20 lần. Ghi `docs/test-report.md`.
+
+**Acceptance criteria:**
+- [ ] Số đo thật cho từng chỉ số, so với mục tiêu (boot < 10 s, iperf3 > 500 Mbit/s, rootfs < 64 MB, RAM trống > 80%)
+- [ ] 20/20 lần reboot tới login, hoặc ghi rõ lần lỗi
+
+**Verification:**
+- [ ] Manual check: log thô `tasks/logs/t11-*`; báo cáo trích đúng số
+
+**Dependencies:** T7, T9 (T10 nếu đo cả IP)
+
+**Files likely touched:**
+- `docs/test-report.md`, `tasks/logs/`
+
+**Estimated scope:** S
+
+## Task 12: Boot QSPI *(tuỳ chọn)*
+
+**Description:** Bật QSPI trong PS (Vivado), khai báo phân vùng flash trong `petalinux-config`, ghi `BOOT.BIN` bằng `flashcp`, đổi jumper boot QSPI (cần schematic E316).
+
+**Acceptance criteria:**
+- [ ] `cat /proc/mtd` đúng phân vùng
+- [ ] Boot mode QSPI tới login
+
+**Verification:**
+- [ ] Manual check: log `tasks/logs/t12-qspi.log`
+
+**Dependencies:** T7
+
+**Files likely touched:**
+- `hw/e316/create_project.tcl`, `plnx/e316/project-spec/configs/config`
 
 **Estimated scope:** S
 
