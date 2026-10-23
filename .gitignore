@@ -11,3 +11,5 @@ hw/*/vivado/
 *.jou
 *.log
 !tasks/logs/*.log
+vivado_pid*.str
+.Xil/

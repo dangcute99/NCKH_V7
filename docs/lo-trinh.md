@@ -18,7 +18,7 @@ flowchart TD
   subgraph P1["Phase 1 · Công cụ + đường boot tối thiểu"]
     T1["✅ 👤 T1 Máy build sẵn sàng"]
     T2["✅ T2 Cài PetaLinux 2021.1"]
-    T3["⏳ T3 Cài Vivado 2021.1"]
+    T3["✅ T3 Cài Vivado 2021.1"]
     T4["T4 XSA tối thiểu (PS: DDR, UART1, SD0)"]
     T5["T5 E316 boot tới login (INITRAMFS)"]
   end
@@ -57,8 +57,8 @@ flowchart TD
 |---|---|---|
 | Máy build: gói hệ thống | ✅ xong | `/bin/sh` → bash; 29 gói PetaLinux + 4 gói Vivado; `/opt/pkg`, `/tools/Xilinx` thuộc user; user trong nhóm `dialout` |
 | PetaLinux 2021.1 | ✅ xong | `/opt/pkg/petalinux/2021.1` (13 GB) |
-| Vivado 2021.1 ML Standard, chỉ Zynq-7000 | ⏳ đang cài | Web installer, token AMD (hạn 30/10/2026), cấu hình `~/.Xilinx/install_config.txt`, tải ~22 GB vào `/tools/Xilinx` |
-| Driver cáp JTAG | chưa | Sau khi Vivado xong: `sudo /tools/Xilinx/Vivado/2021.1/data/xicom/cable_drivers/lin64/install_script/install_drivers/install_drivers` |
+| Vivado 2021.1 ML Standard, chỉ Zynq-7000 | ✅ xong | `/tools/Xilinx` (27 GB, tải ~22 GB); mở bằng `source /tools/Xilinx/Vivado/2021.1/settings64.sh` |
+| Driver cáp JTAG | ✅ xong | `cd /tools/Xilinx/Vivado/2021.1/data/xicom/cable_drivers/lin64/install_script/install_drivers && sudo ./install_drivers` (phải chạy **từ thư mục của script**) |
 | Phần cứng | đã có | ANTSDR E316, cáp USB Type-C (console UART1 115200), microSD ≥ 8 GB + đầu đọc, cáp mạng dải 192.168.1.x, jumper boot SD |
 
 Lệnh đã dùng cho máy build (để cài lại trên máy khác):
@@ -98,8 +98,8 @@ sudo usermod -aG dialout "$USER"    # đăng xuất/nhập lại để có hiệ
 - **Học:** [petalinux.md](petalinux.md) mục 1–6.
 - **Xong khi:** `which petalinux-create petalinux-build petalinux-package` in đủ đường dẫn.
 
-**T3 · Cài Vivado 2021.1** ⏳
-- **Làm:** cài batch theo `install_config.txt`; xong thì người dùng cài driver cáp JTAG bằng sudo. Không chạy cùng lúc với `petalinux-build`.
+**T3 · Cài Vivado 2021.1** ✅
+- **Làm:** cài batch theo `install_config.txt`; xong thì cài driver cáp JTAG: `cd /tools/Xilinx/Vivado/2021.1/data/xicom/cable_drivers/lin64/install_script/install_drivers && sudo ./install_drivers`. Không chạy cùng lúc với `petalinux-build`.
 - **Học:** cách mở Vivado (`source /tools/Xilinx/Vivado/2021.1/settings64.sh`), chế độ GUI và chế độ batch Tcl.
 - **Xong khi:** `vivado -version` in `v2021.1`; tạo được project rỗng cho `xc7z020clg400-1` bằng Tcl.
 

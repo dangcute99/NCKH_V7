@@ -55,12 +55,14 @@ Quy ước: `$P` = `plnx/e316`; mỗi terminal PetaLinux chạy `source /opt/pkg
 **Tiến độ 23/10:** đã sinh `~/.Xilinx/install_config.txt` (Vivado ML Standard, chỉ `Zynq-7000:1`, không DocNav/Model Composer/shortcut). Lệnh cài: `~/Downloads/xil2021.1/xsetup -a XilinxEULA,3rdPartyEULA,WebTalkTerms -b Install -c ~/.Xilinx/install_config.txt` — chờ `/tools/Xilinx` (T1). Token hết hạn 30/10: cài trước ngày đó, quá hạn thì chạy lại `AuthTokenGen`.
 
 **Acceptance criteria:**
-- [ ] `vivado -version` in `v2021.1`
-- [ ] `vivado -mode batch -source <tcl tạo project rỗng xc7z020clg400-1>` chạy không lỗi
-- [ ] Dung lượng `/tools/Xilinx` ghi vào nhật ký
+- [x] `vivado -version` in `v2021.1` (23/10)
+- [x] `vivado -mode batch -source <tcl tạo project rỗng xc7z020clg400-1>` chạy không lỗi (tạo được project + cell `processing_system7`)
+- [x] Dung lượng `/tools/Xilinx` ghi vào nhật ký (27 GB)
 
 **Verification:**
-- [ ] Manual check: lệnh trên + `du -sh /tools/Xilinx`; (khi cắm board) `hw_server` thấy cáp
+- [x] Manual check: lệnh trên + `du -sh /tools/Xilinx`
+- [x] Driver cáp JTAG (23/10): 3 rule `52-xilinx-*.rules` trong `/etc/udev/rules.d/`
+- [ ] `hw_server` thấy cáp khi cắm board — kiểm khi có board, không chặn T4/T5 (boot SD)
 
 **Dependencies:** T1
 

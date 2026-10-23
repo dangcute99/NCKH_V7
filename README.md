@@ -105,7 +105,8 @@ NCKH/
 │   ├── quy-trinh-xay-dung.md       # quy trình chi tiết từng bước build + boot
 │   ├── lo-trinh.md                 # sơ đồ các bước, cần cài, cần học
 │   ├── petalinux.md                # giải thích PetaLinux cho người mới
-│   └── yocto.md                    # giải thích Yocto (gatesgarth) + đọc meta-modem
+│   ├── yocto.md                    # giải thích Yocto (gatesgarth) + đọc meta-modem
+│   └── bao-cao-dan-y.md            # dàn ý báo cáo nghiên cứu: chương ↔ nguồn ↔ bằng chứng
 ├── tasks/                          # plan + task list + nhật ký
 ├── hw/
 │   └── e316/
