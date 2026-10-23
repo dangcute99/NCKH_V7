@@ -119,7 +119,7 @@ Khi dùng **INITRAMFS** (rootfs nằm trong RAM), mọi thứ bạn sửa trong 
 
 ## 8. Tùy biến bằng layer: `meta-modem`
 
-Yocto tổ chức mọi thứ thành **layer** (thư mục bắt đầu bằng `meta-`). Mỗi layer chứa **recipe** (`.bb`: công thức build một gói) và **bbappend** (`.bbappend`: sửa thêm vào recipe của layer khác).
+Yocto tổ chức mọi thứ thành **layer** (thư mục bắt đầu bằng `meta-`); giải thích kỹ ở [yocto.md](yocto.md). Mỗi layer chứa **recipe** (`.bb`: công thức build một gói) và **bbappend** (`.bbappend`: sửa thêm vào recipe của layer khác).
 
 Project này có layer dùng chung [`meta-modem/`](../meta-modem/):
 

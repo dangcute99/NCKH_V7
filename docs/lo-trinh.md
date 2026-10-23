@@ -1,179 +1,181 @@
 # Lộ trình PetaLinux cho E316
 
-Các bước dựng Linux nhúng cho modem vệ tinh trên ANTSDR E316: thứ tự làm, cần cài gì, cần học gì cho từng bước. Chi tiết kỹ thuật từng bước build/boot: [quy-trinh-xay-dung.md](quy-trinh-xay-dung.md). Task và tiêu chí nghiệm thu: [../tasks/todo.md](../tasks/todo.md).
+Các bước dựng Linux nhúng cho modem vệ tinh trên ANTSDR E316 **từ đầu**: thứ tự làm, cần cài gì, cần học gì cho từng bước. Task và tiêu chí nghiệm thu chi tiết: [../tasks/todo.md](../tasks/todo.md). Kỹ thuật từng bước build/boot: [quy-trinh-xay-dung.md](quy-trinh-xay-dung.md). Nền tảng: [petalinux.md](petalinux.md), [yocto.md](yocto.md).
 
 | | |
 |---|---|
-| Công cụ | PetaLinux 2021.1, Vivado 2021.1 (máy Windows), Yocto gatesgarth |
-| Máy build | Ubuntu 20.04.6, 12 luồng, 15 GB RAM, ~419 GB trống |
+| Công cụ | Vivado 2021.1 ML Standard (chỉ Zynq-7000) + PetaLinux 2021.1, **cùng trên máy build** |
+| Máy build | Ubuntu 20.04.6, 12 luồng, 15 GB RAM, chưa có swap |
+| Nguyên tắc | Làm từ đầu; `_ZynQ_Study/` chỉ để đối chiếu thông số. Mỗi task là một lát dọc kiểm thẳng trên board |
 | Cập nhật | 23/10/2026 |
 
 ## 1. Sơ đồ các bước
 
-Ký hiệu: 👤 người dùng làm · không ký hiệu = Claude làm (hỏi trước khi chạy) · ◆ checkpoint người dùng duyệt.
+Ký hiệu: 👤 người dùng làm · ✅ đã xong · ⏳ đang làm · ◆ checkpoint người dùng duyệt.
 
 ```mermaid
 flowchart TD
-  subgraph P1["Phase 1 · Môi trường + QEMU (không cần board)"]
-    P0["👤 P0 Chuẩn bị máy build<br/>dash→bash · 29 gói · tải bộ cài"]
-    T1["T1 Cài PetaLinux 2021.1"]
-    T2["T2 BSP ZC702 → build → QEMU"]
+  subgraph P1["Phase 1 · Công cụ + đường boot tối thiểu"]
+    T1["✅ 👤 T1 Máy build sẵn sàng"]
+    T2["✅ T2 Cài PetaLinux 2021.1"]
+    T3["⏳ T3 Cài Vivado 2021.1"]
+    T4["T4 XSA tối thiểu (PS: DDR, UART1, SD0)"]
+    T5["T5 E316 boot tới login (INITRAMFS)"]
   end
-  CP1{{"◆ CP1 QEMU tới login"}}
-  subgraph P2["Phase 2 · Layer meta-modem (thử trên QEMU)"]
-    T3["T3 Kernel fragment modem.cfg"]
-    T4["T4 Gói rootfs + zynq-selftest"]
-    T5["T5 Driver modem-regs"]
+  CP1{{"◆ CP1 Login UART bằng XSA + image tự làm"}}
+  subgraph P2["Phase 2 · Hệ thống dùng được"]
+    T6["T6 Ethernet (Vivado EMIO + DT) + SSH"]
+    T7["T7 Rootfs EXT4 trên SD (.wic)"]
+    T8["T8 meta-modem + kernel fragment"]
   end
-  CP2{{"◆ CP2 selftest + modprobe OK trên QEMU"}}
-  subgraph P3["Phase 3 · Board E316"]
-    T6["👤 T6 Chép XSA bringup → hw/e316"]
-    T7["T7 Project E316 + system-user.dtsi"]
-    T8["T8 Build + .wic → thẻ SD → boot"]
+  CP2{{"◆ CP2 Boot .wic, SSH, dữ liệu còn sau reboot"}}
+  subgraph P3["Phase 3 · Kiểm thử + driver modem"]
+    T9["T9 zynq-selftest trên board"]
+    T10["T10 IP AXI-Lite + modem-regs"]
   end
-  CP3{{"◆ CP3 E316 login, selftest PASS"}}
-  subgraph P4["Phase 4 · IP modem, QSPI, đo đạc"]
-    T9["T9 IP AXI-Lite trên PL + modem-regs"]
-    T10["T10 Boot QSPI (tuỳ chọn)"]
-    T11["T11 Đo boot, iperf3, ổn định"]
+  CP3{{"◆ CP3 selftest PASS PS + PL + modem"}}
+  subgraph P4["Phase 4 · Đo đạc"]
+    T11["T11 Đo boot, mạng, ổn định"]
+    T12["T12 Boot QSPI (tuỳ chọn)"]
   end
   CP4{{"◆ CP4 Báo cáo kiểm thử"}}
-  P0 --> T1 --> T2 --> CP1
-  CP1 --> T3
-  T3 --> T4 & T5
-  T4 & T5 --> CP2
-  CP2 --> T7
-  T6 --> T7 --> T8 --> CP3
-  CP3 --> T9 & T10 & T11
-  T9 & T10 & T11 --> CP4
+  T1 --> T2 & T3
+  T3 --> T4
+  T2 & T4 --> T5 --> CP1
+  CP1 --> T6 --> T7 --> T8 --> CP2
+  CP2 --> T9 & T10
+  T9 & T10 --> CP3
+  CP3 --> T11 & T12
+  T11 & T12 --> CP4
 ```
 
-**Đường găng:** P0 → T1 → T2 (lần build đầu 1–2 giờ, cần mạng) → T7 → T8. T6 không chặn vì XSA E316 bản 2021.1 đã có trong `_ZynQ_Study/`.
+**Đường găng:** T1 → T3 → T4 → T5 → T6 → T7 → T8. Mốc tối thiểu cho 28/10 là CP2.
 
 ## 2. Cần cài
 
-| Nơi | Trạng thái | Cần gì |
+| Nơi | Trạng thái | Chi tiết |
 |---|---|---|
-| Máy build (Ubuntu 20.04.6) | **chưa xong** | `/bin/sh` đang là dash → đổi sang bash; thiếu **29 gói** host; chưa có `/opt/pkg`. Đã có: kiến trúc i386, locale `en_US.UTF-8` |
-| Tải từ AMD (cần tài khoản, mục Archive 2021.1) | **chưa có** | `petalinux-v2021.1-final-installer.run`; `xilinx-zc702-v2021.1-final.bsp`; (tuỳ) Hardware Server 2021.1 nếu cần JTAG từ máy build |
-| Máy Windows | đã có | Vivado/Vitis 2021.1 — dùng ở T9 |
-| Phần cứng | đã có | ANTSDR E316, cáp USB Type-C (console UART1 115200), microSD ≥ 8 GB + đầu đọc, cáp mạng cùng dải 192.168.1.x, jumper boot SD |
+| Máy build: gói hệ thống | ✅ xong | `/bin/sh` → bash; 29 gói PetaLinux + 4 gói Vivado; `/opt/pkg`, `/tools/Xilinx` thuộc user; user trong nhóm `dialout` |
+| PetaLinux 2021.1 | ✅ xong | `/opt/pkg/petalinux/2021.1` (13 GB) |
+| Vivado 2021.1 ML Standard, chỉ Zynq-7000 | ⏳ đang cài | Web installer, token AMD (hạn 30/10/2026), cấu hình `~/.Xilinx/install_config.txt`, tải ~22 GB vào `/tools/Xilinx` |
+| Driver cáp JTAG | chưa | Sau khi Vivado xong: `sudo /tools/Xilinx/Vivado/2021.1/data/xicom/cable_drivers/lin64/install_script/install_drivers/install_drivers` |
+| Phần cứng | đã có | ANTSDR E316, cáp USB Type-C (console UART1 115200), microSD ≥ 8 GB + đầu đọc, cáp mạng dải 192.168.1.x, jumper boot SD |
 
-Lệnh cài cho P0 (một lần, cần sudo). Danh sách gói đã kiểm bằng `dpkg-query` và chạy thử `apt-get -s` ngày 23/10: không lỗi.
+Lệnh đã dùng cho máy build (để cài lại trên máy khác):
 
 ```sh
-# 1. /bin/sh → bash (chọn "No")
-sudo dpkg-reconfigure dash
-
-# 2. 29 gói host còn thiếu theo UG1144 2021.1 (python→python2, pylint3→pylint trên 20.04)
+sudo dpkg-reconfigure dash          # chọn "No" → /bin/sh là bash
 sudo apt update
 sudo apt install -y gawk python2 net-tools libncurses5-dev tftpd libssl-dev flex bison \
   git-core diffstat chrpath xterm autoconf libtool texinfo gcc-multilib automake screen pax \
-  python3-git python3-jinja2 libegl1-mesa libsdl1.2-dev pylint libtinfo5 zlib1g:i386
+  python3-git python3-jinja2 libegl1-mesa libsdl1.2-dev pylint libtinfo5 zlib1g:i386 \
+  picocom device-tree-compiler u-boot-tools \
+  libncurses5 default-jre libcanberra-gtk-module
+sudo mkdir -p /opt/pkg/petalinux/2021.1 /tools/Xilinx && sudo chown -R "$USER": /opt/pkg /tools/Xilinx
+sudo usermod -aG dialout "$USER"    # đăng xuất/nhập lại để có hiệu lực
 
-# 3. Tiện ích tra cứu: console serial, dtc, mkimage/dumpimage
-sudo apt install -y picocom device-tree-compiler u-boot-tools
+# PetaLinux
+./petalinux-v2021.1-final-installer.run -d /opt/pkg/petalinux/2021.1
 
-# 4. Thư mục cài PetaLinux cho user thường; quyền mở /dev/ttyUSB0
-sudo mkdir -p /opt/pkg/petalinux/2021.1 && sudo chown -R "$USER": /opt/pkg
-sudo usermod -aG dialout "$USER"   # đăng xuất/nhập lại để có hiệu lực
+# Vivado (web installer)
+./Xilinx_Unified_2021.1_0610_2318_Lin64.bin --noexec --target ~/Downloads/xil2021.1
+~/Downloads/xil2021.1/xsetup -b AuthTokenGen          # nhập email/mật khẩu AMD
+~/Downloads/xil2021.1/xsetup -b ConfigGen             # chọn 2 (Vivado) → 1 (ML Standard), rồi sửa Modules chỉ Zynq-7000:1
+~/Downloads/xil2021.1/xsetup -a XilinxEULA,3rdPartyEULA,WebTalkTerms -b Install -c ~/.Xilinx/install_config.txt
 ```
 
 ## 3. Từng bước: làm gì, học gì, xong khi nào
 
-### Phase 1 — Môi trường + QEMU
+### Phase 1 — Công cụ + đường boot tối thiểu
 
-**P0 · Chuẩn bị máy build** 👤
-- **Làm:** chạy khối lệnh ở mục 2; tải bộ cài + BSP ZC702 2021.1.
-- **Học:** UG1144 v2021.1 chương 2 “Setting Up Your Environment”.
-- **Xong khi:** `readlink -f /bin/sh` ra `/usr/bin/bash`; có đủ 2 file tải về.
+**T1 · Máy build sẵn sàng** 👤 ✅
+- **Làm:** khối lệnh cài gói, thư mục, `dialout`; tải 2 bộ cài; tạo token AMD.
+- **Học:** UG1144 v2021.1 chương 2 (yêu cầu host); UG973 (yêu cầu cài Vivado 2021.1).
+- **Xong khi:** `readlink -f /bin/sh` ra `/usr/bin/bash`; đủ 33 gói; token tạo thành công.
 
-**T1 · Cài PetaLinux 2021.1**
-- **Làm:** `./petalinux-v2021.1-final-installer.run -d /opt/pkg/petalinux/2021.1`; mỗi terminal: `source /opt/pkg/petalinux/2021.1/settings.sh /opt/pkg/petalinux/2021.1`.
-- **Học:** các lệnh `petalinux-create / -config / -build / -package / -boot` (UG1144 chương 3–5). Đã dùng ở Lab 8: ôn `_ZynQ_Study/_ZynQ_Study/8.E316_B_LINUX/1.Petalinux_HUONG_DAN.txt`.
-- **Xong khi:** `which petalinux-build petalinux-create petalinux-boot` in đủ 3 đường dẫn.
+**T2 · Cài PetaLinux 2021.1** ✅
+- **Làm:** chạy bộ cài vào `/opt/pkg/petalinux/2021.1`; mỗi terminal: `source /opt/pkg/petalinux/2021.1/settings.sh /opt/pkg/petalinux/2021.1`.
+- **Học:** [petalinux.md](petalinux.md) mục 1–6.
+- **Xong khi:** `which petalinux-create petalinux-build petalinux-package` in đủ đường dẫn.
 
-**T2 · Project ZC702 → build → QEMU**
-- **Làm:** trong `plnx/`: `petalinux-create -t project -s xilinx-zc702-v2021.1-final.bsp -n zc702`; thêm `INHERIT += "rm_work"` vào `petalinuxbsp.conf`; `petalinux-build` (1–2 giờ, chạy qua đêm); `petalinux-boot --qemu --kernel`.
-- **Học:** cấu trúc project (`project-spec/`, `components/`, `build/`, `images/linux/`); bitbake, sstate, downloads. Đọc Yocto 3.2 Overview Manual, chương “The Yocto Project Development Environment”.
-- **Xong khi:** QEMU tới login, vào được `root`/`root`; ghi thời gian build và dung lượng `build/`.
+**T3 · Cài Vivado 2021.1** ⏳
+- **Làm:** cài batch theo `install_config.txt`; xong thì người dùng cài driver cáp JTAG bằng sudo. Không chạy cùng lúc với `petalinux-build`.
+- **Học:** cách mở Vivado (`source /tools/Xilinx/Vivado/2021.1/settings64.sh`), chế độ GUI và chế độ batch Tcl.
+- **Xong khi:** `vivado -version` in `v2021.1`; tạo được project rỗng cho `xc7z020clg400-1` bằng Tcl.
 
-**◆ CP1** — máy build và QEMU chạy được; quyết định giữ hay xoá `plnx/zc702/` (ổ dư, có thể giữ).
+**T4 · XSA tối thiểu cho E316 (chỉ PS)**
+- **Làm:** viết `hw/e316/create_project.tcl`: block design chỉ có ZYNQ7 PS; DDR3 `MT41J256M16 RE-125` 32-bit; UART1 MIO 12–13; SD0; tắt ngoại vi không dùng. Generate bitstream, Export Hardware kèm bitstream → `hw/e316/system.xsa`. Ghi bảng đối chiếu thông số với thiết kế tham khảo vào `hw/e316/README.md`.
+- **Học:** cấu hình ZYNQ7 Processing System (DDR, MIO, clock); Tcl của Vivado (`create_project`, `create_bd_design`, `set_property CONFIG.*`, `write_hw_platform`). Đọc UG585 chương DDR và MIO; UG1165 (Embedded Design Tutorial) phần tạo hệ thống Zynq.
+- **Xong khi:** script chạy lại ra cùng XSA; `unzip -l hw/e316/system.xsa` có `.bit`, `ps7_init*`, `.hwh`.
 
-### Phase 2 — Layer meta-modem (thử trên QEMU)
+**T5 · E316 boot tới login qua UART (INITRAMFS)**
+- **Làm:** `petalinux-create -t project --template zynq -n e316`; `petalinux-config --get-hw-description=../../hw/e316/system.xsa`; console `ps7_uart_1`; `petalinux-build` (lần đầu 1–2 giờ); `petalinux-package --boot …`; chép `BOOT.BIN`, `image.ub`, `boot.scr` lên phân vùng FAT; `picocom -b 115200 /dev/ttyUSB0`.
+- **Học:** chuỗi boot Zynq ([petalinux.md](petalinux.md) mục 4; UG585 chương 6); bảng tra lỗi theo log UART ([quy-trinh-xay-dung.md](quy-trinh-xay-dung.md) Phụ lục).
+- **Xong khi:** log UART qua FSBL → U-Boot → kernel → login `root`/`root`; 2 nhân; `fpga_manager` ở trạng thái `operating`.
 
-**T3 · Layer meta-modem + kernel fragment**
-- **Làm:** `petalinux-config` → Yocto Settings → User Layers thêm `${PROOT}/../../meta-modem`; `petalinux-build -c kernel`; grep từng option của `modem.cfg` trong `.config`.
-- **Học:** layer (`layer.conf`, `LAYERSERIES_COMPAT`), `.bb` vs `.bbappend`, override gatesgarth `SRC_URI_append`, kernel fragment + `KERNEL_FEATURES`. Đọc Yocto 3.2 Dev Manual “Understanding and Creating Layers”, Kernel Dev Manual “Creating Configuration Fragments”.
-- **Xong khi:** build kernel OK, mọi option khớp, QEMU vẫn boot. Đây là lần đầu kiểm các sửa đổi gatesgarth (đặc biệt license `GPL-2.0`).
+**◆ CP1** — E316 login UART bằng XSA + image tự làm.
 
-**T4 · Gói rootfs + zynq-selftest**
-- **Làm:** `petalinux-config -c rootfs`: bật dropbear, ethtool, iperf3, i2c-tools, spitools, mtd-utils, memtester, `zynq-selftest`; trên QEMU chạy `zynq-selftest; echo $?`.
-- **Học:** `rootfs_config`, `user-rootfsconfig`; recipe app kiểu “install”; init sysvinit/BusyBox.
-- **Xong khi:** không FAIL ở CPU/RAM/kernel log/rootfs/UART/eth0; QSPI/PL/modem báo WARN; ép một FAIL thì mã thoát ≠ 0.
+### Phase 2 — Hệ thống dùng được
 
-**T5 · Driver mẫu modem-regs**
-- **Làm:** `petalinux-build -c modem-regs`; trên QEMU: `modprobe modem-regs`, `dmesg`, `rmmod`; `modinfo` có alias `of:*modem,modem-regs*`.
-- **Học:** platform driver + `of_match_table`, `devm_ioremap_resource`, misc device, `read/write/llseek`, Makefile module ngoài cây. Đọc LDD3 chương 2–3, `Documentation/driver-api/driver-model/platform.rst`.
-- **Xong khi:** build không warning; nạp/gỡ sạch trên QEMU.
+**T6 · Ethernet + SSH**
+- **Làm:** Vivado: ENET0 qua EMIO + `gmii_to_rgmii` (FCLK_CLK2 200 MHz) + ràng buộc chân RGMII trong `hw/e316/e316.xdc`. PetaLinux: `system-user.dtsi` cho PHY RTL8211F @ MDIO 1, `phy-mode = "rgmii-id"`, tắt `gmii_to_rgmii_0`, converter `gmiitorgmii@8`; bật dropbear.
+- **Học:** EMIO vs MIO; file XDC; Device Tree node PHY/MDIO ([petalinux.md](petalinux.md) mục 9; devicetree.org spec chương 2–3).
+- **Xong khi:** `eth0` có link; PC ping và `ssh root@<IP>` vào được.
 
-**◆ CP2** — `meta-modem` chạy được trên 2021.1; commit + push `meta-modem/`.
+**T7 · Rootfs EXT4 trên thẻ SD**
+- **Làm:** rootfs EXT4, `/dev/mmcblk0p2`, bootargs có `root=/dev/mmcblk0p2 rw rootwait`; `petalinux-package --wic`; `lsblk` trước/sau khi cắm thẻ rồi `dd`.
+- **Học:** INITRAMFS vs EXT4; ảnh `.wic` 2 phân vùng; UG1144 “Configuring SD Card ext File System Boot”.
+- **Xong khi:** `/` mount ext4 rw; file tạo ra còn sau reboot.
 
-### Phase 3 — Board E316
+**T8 · Layer `meta-modem` + kernel fragment**
+- **Làm:** User Layers thêm `${PROOT}/../../meta-modem`; build lại kernel với `modem.cfg`.
+- **Học:** [yocto.md](yocto.md) toàn bộ (layer, recipe, bbappend, cú pháp gatesgarth `_append`, kernel fragment).
+- **Xong khi:** mọi option của `modem.cfg` có trong `.config` của kernel; board boot lại bình thường.
 
-**T6 · XSA cho E316** 👤
-- **Làm:** chép `_ZynQ_Study/_ZynQ_Study/5.E316_V1_PS_PL/vivado_ps_bringup/AntSDR_E316_bringup_v2/hw/ps_bringup_wrapper_2.xsa` → `hw/e316/system.xsa`.
-- **Học:** XSA chứa gì (`.bit`, `.hwh`, `ps7_init`); hai loại XSA E316 và vì sao không dùng lẫn (đã học ở Lab 5–9).
-- **Xong khi:** `unzip -l hw/e316/system.xsa` thấy `.bit` và `ps7_init*`.
+**◆ CP2** — Boot từ `.wic`, SSH được, dữ liệu còn sau reboot, kernel có option modem. **Mốc tối thiểu cho 28/10.**
 
-**T7 · Project E316 + Device Tree**
-- **Làm:** `petalinux-create -t project --template zynq -n e316`; `petalinux-config --get-hw-description=../../hw/e316/system.xsa`; console `ps7_uart_1`; rootfs EXT4 `/dev/mmcblk0p2`; layer `meta-modem`; viết `system-user.dtsi` (Ethernet theo công thức Lab 8, xem [quy-trinh-xay-dung.md](quy-trinh-xay-dung.md) B6).
-- **Học:** `system-top.dts` / `pcw.dtsi` / `pl.dtsi`, ghi đè bằng `&label`, node PHY + MDIO, `chosen/bootargs`. Đã có nền từ Lab 8 (eth0) và Lab 9 (IRQ DMA). Đọc devicetree.org spec chương 2–3.
-- **Xong khi:** `petalinux-build -c device-tree` OK; `dtc -I dtb -O dts images/linux/system.dtb | grep -A3 chosen` đúng bootargs.
+### Phase 3 — Kiểm thử + driver modem
 
-**T8 · Build, đóng gói, boot E316 từ thẻ SD**
-- **Làm:** `petalinux-build` → `petalinux-package --boot --fsbl … --fpga … --u-boot --force` → `petalinux-package --wic`; `lsblk` trước/sau khi cắm thẻ; `dd` ra đúng `/dev/sdX`; `picocom -b 115200 /dev/ttyUSB0`.
-- **Học:** BootROM → FSBL → bitstream → U-Boot → `boot.scr` → FIT `image.ub` → kernel → rootfs ext4. Đọc UG585 chương 6 “Boot and Configuration”, UG1144 “Packaging and Booting”, mục R1–R7 trong [quy-trinh-xay-dung.md](quy-trinh-xay-dung.md). Lab D (chưa làm) luyện đúng phần này.
-- **Xong khi:** log UART từ FSBL tới login; `zynq-selftest` PASS CPU, RAM, rootfs, UART, SD, eth0, PL `operating`.
+**T9 · `zynq-selftest` trên board**
+- **Làm:** bật `zynq-selftest` + ethtool, iperf3, i2c-tools, spitools, mtd-utils, memtester trong rootfs; chạy với `EXPECT_CPUS=2 EXPECT_MEM_MB=<DDR> PING_HOST=<IP PC>`.
+- **Học:** thêm gói vào rootfs ([yocto.md](yocto.md) mục 8).
+- **Xong khi:** PASS CPU, RAM, kernel log, rootfs, UART, SD, eth0, PL; ép FAIL thì mã thoát ≠ 0.
 
-**◆ CP3** — E316 boot ổn định từ thẻ SD; commit `plnx/e316/project-spec/`.
+**T10 · IP AXI-Lite + `modem-regs`**
+- **Làm:** Vivado: IP AXI4-Lite (thanh ghi version cố định + scratch) trên GP0, xuất XSA; PetaLinux: node `compatible = "modem,modem-regs"`, bật gói `modem-regs`, `petalinux-package --boot`.
+- **Học:** Create and Package IP AXI4-Lite (UG1118); platform driver Linux, `ioremap`, misc device (LDD3 chương 2–3).
+- **Xong khi:** `/dev/modem_<địa chỉ>` đọc đúng version, scratch ghi/đọc khớp, truy cập lệch căn lề trả `EINVAL`.
 
-### Phase 4 — IP modem, QSPI, đo đạc
+**◆ CP3** — selftest PASS PS + PL + modem.
 
-**T9 · IP thanh ghi trên PL + modem-regs trên board**
-- **Làm:** trên Windows/Vivado 2021.1 thêm IP AXI-Lite (thanh ghi version + scratch) vào BD bringup, xuất XSA mới; trên máy build `--get-hw-description`, bật node `compatible = "modem,modem-regs"`.
-- **Học:** Create and Package IP AXI4-Lite, Address Editor, địa chỉ → `reg` trong DT. Đã có nền từ P1 (AXI BRAM).
-- **Xong khi:** có `/dev/modem_*`; đọc version đúng; ghi/đọc scratch khớp; truy cập lệch căn lề trả `EINVAL`.
+### Phase 4 — Đo đạc
 
-**T10 · Boot từ QSPI (tuỳ chọn)**
-- **Làm:** khai báo phân vùng flash trong `petalinux-config`; ghi `BOOT.BIN` bằng `flashcp`; đổi jumper.
-- **Học:** MTD, phân vùng QSPI, boot mode QSPI. Vị trí jumper QSPI trên E316 chưa xác nhận: cần schematic.
-- **Xong khi:** `cat /proc/mtd` đúng phân vùng; boot QSPI tới login.
+**T11 · Đo đạc + báo cáo**
+- **Làm:** boot time (`printk.time=1`), `iperf3` hai chiều, dung lượng rootfs, RAM trống; chạy ~12 giờ + reboot 20 lần; ghi `docs/test-report.md`.
+- **Xong khi:** số đo thật so với mục tiêu README §6.3 (boot < 10 s, iperf3 > 500 Mbit/s, rootfs < 64 MB).
 
-**T11 · Đo đạc + báo cáo kiểm thử**
-- **Làm:** thời gian boot (mốc log UART), `iperf3 -c <PC>`, dung lượng rootfs, RAM trống; chạy 12 giờ + 20 lần reboot.
-- **Học:** log boot có timestamp (`printk.time=1`), iperf3, memtester.
-- **Xong khi:** `docs/test-report.md` có số đo thật so với mục tiêu README §6.3 (boot < 10 s, iperf3 > 500 Mbit/s, rootfs < 64 MB).
+**T12 · Boot QSPI (tuỳ chọn)**
+- **Làm:** bật QSPI trong PS, phân vùng flash, `flashcp` `BOOT.BIN`, đổi jumper (cần schematic E316).
+- **Xong khi:** `cat /proc/mtd` đúng; boot QSPI tới login.
 
-**◆ CP4** — đạt tiêu chí README §6 (bản rút gọn); commit + push.
+**◆ CP4** — Đạt tiêu chí README §6 (bản rút gọn).
 
 ## 4. Cần học: tổng hợp
 
-“Đã có nền” = đã làm thực tế trong lộ trình học E316 (`_ZynQ_Study/`); chỉ cần ôn và áp vào project này.
+“Đã có nền” = đã làm thực tế trong lộ trình học E316; chỉ cần ôn và áp vào dự án.
 
 | Chủ đề | Dùng ở | Mức hiện tại | Đọc gì |
 |---|---|---|---|
-| Quy trình PetaLinux (create, config, build, package) | T1–T8 | Đã có nền · Lab 8 | UG1144 v2021.1 ch. 3–5; `8.E316_B_LINUX/1.Petalinux_HUONG_DAN.txt` |
-| Yocto: layer, recipe, bbappend, override gatesgarth | T3–T5 | **Mới** | Yocto 3.2 Dev Manual: “Understanding and Creating Layers”, “Writing a New Recipe” |
-| Kernel config fragment | T3 | **Mới** | Yocto 3.2 Kernel Dev Manual: “Creating Configuration Fragments” |
-| Linux driver: platform, ioremap, misc device | T5, T9 | **Mới** | LDD3 ch. 2–3, 9; kernel `driver-api/driver-model/platform.rst` |
-| Device Tree: dtsi, `&label`, PHY/MDIO, chosen | T7, T9 | Đã có nền · Lab 8–9 | devicetree.org spec ch. 2–3; `1.Petalinux_HUONG_DAN.txt` mục 10.7 |
-| Chuỗi boot Zynq, BOOT.BIN, U-Boot, FIT | T8, T10 | Một phần · Lab D chưa làm | UG585 ch. 6; UG1144 “Packaging and Booting”; `10.E316_D_BOOT/GIOI_THIEU_LAB_D.txt` |
-| Rootfs EXT4 trên SD, ảnh `.wic`, `dd` | T8 | **Mới** · Lab 8 dùng INITRAMFS | UG1144 “Configuring SD Card ext File System Boot” |
-| QEMU của PetaLinux | T2–T5 | **Mới** | UG1144 “Booting PetaLinux Image on QEMU” |
-| IP AXI4-Lite trong Vivado | T9 | Đã có nền · P1 BRAM | UG1118 “Creating and Packaging Custom IP” |
-| UIO / generic-uio, AXI DMA trên Linux | T9 trở đi | Một phần · Lab 8 mmap, dmatest | kernel `driver-api/uio-howto.rst`; PG021 |
+| Vivado: ZYNQ7 PS, block design, Tcl batch | T4, T6, T10 | Đã có nền · Lab V1 (làm bằng GUI trên Windows) | UG1165; UG585 chương DDR/MIO; UG835 (lệnh Tcl) |
+| Quy trình PetaLinux | T5–T10 | Đã có nền · Lab 8 | [petalinux.md](petalinux.md); UG1144 v2021.1 chương 3–5 |
+| Chuỗi boot Zynq, BOOT.BIN, U-Boot, FIT | T5, T7, T12 | Một phần · Lab D chưa làm | UG585 chương 6; UG1144 “Packaging and Booting” |
+| Device Tree: dtsi, `&label`, PHY/MDIO | T6, T10 | Đã có nền · Lab 8–9 | devicetree.org spec chương 2–3 |
+| EMIO + `gmii_to_rgmii` + XDC | T6 | Đã có nền · Lab V1/B2 | UG585 chương Ethernet; PG160 (GMII to RGMII) |
+| Rootfs EXT4, ảnh `.wic`, `dd` | T7 | **Mới** · Lab 8 dùng INITRAMFS | UG1144 “Configuring SD Card ext File System Boot” |
+| Yocto: layer, recipe, bbappend, gatesgarth | T8–T10 | **Mới** | [yocto.md](yocto.md); Yocto 3.2 Dev Manual |
+| Linux driver: platform, ioremap, misc device | T10 | **Mới** | LDD3 chương 2–3, 9; kernel `driver-model/platform.rst` |
+| IP AXI4-Lite tự tạo | T10 | Đã có nền · P1 BRAM | UG1118 “Creating and Packaging Custom IP” |
 
 ---
 
-Lệnh T2–T11 lấy từ kế hoạch, chưa chạy thử với PetaLinux 2021.1. Tên chương tài liệu ghi theo trí nhớ, cần đối chiếu khi mở. Mọi lệnh `petalinux-*`, QEMU và ghi thẻ SD đều hỏi người dùng trước khi chạy.
+Lệnh từ T4 trở đi lấy từ kế hoạch, chưa chạy thử với 2021.1. Tên chương tài liệu ghi theo trí nhớ, cần đối chiếu khi mở. Mọi lệnh `petalinux-*`, Vivado batch và ghi thẻ SD đều hỏi người dùng trước khi chạy.

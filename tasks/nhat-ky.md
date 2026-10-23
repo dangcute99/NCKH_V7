@@ -54,6 +54,9 @@ Kế hoạch: [plan.md](plan.md) · Task: [todo.md](todo.md)
 
 - **T2 xong:** PetaLinux 2021.1 cài tại `/opt/pkg/petalinux/2021.1` (13 GB), `petalinux-*` chạy được. Gói host đã cài; `/bin/sh` đã đổi sang bash (`readlink -f /bin/sh` → `/usr/bin/bash`); cảnh báo thiếu tftp server bỏ qua (boot SD).
 - **T1 xong:** 33 gói, bash, `/tools/Xilinx`, nhóm `dialout`, token AMD (hạn 30/10). **T3 bắt đầu:** cài Vivado ML Standard 2021.1 chỉ Zynq-7000 bằng `xsetup -b Install` chạy nền.
+- Thêm tài liệu nền: `docs/petalinux.md` (PetaLinux cho người mới), `docs/yocto.md` (Yocto gatesgarth, đọc `meta-modem`). Viết lại `docs/lo-trinh.md` theo plan T1–T12 (làm từ đầu, không ZC702/QEMU); README bỏ QEMU/ZC702, thêm cây `docs/` và `hw/e316/`; dòng trạng thái trong `quy-trinh-xay-dung.md` theo số task mới.
+- Quy ước mới: người dùng nói “update” → đồng bộ toàn dự án + commit/PR/merge lên GitHub (ghi trong `CLAUDE.md`).
+- T3: Vivado đang tải ~7,4/22,4 GB lúc cập nhật (khoảng 4 MB/s).
 
 **Đính chính mục 22/10**
 - Máy build thực tế: **Ubuntu 20.04.6**, kernel 5.15, 12 luồng, 15 GB RAM, **~419 GB trống**. Ghi "22.04.5, 80 GB" hôm 22/10 là sai. `/bin/sh` vẫn là dash; PetaLinux chưa cài.

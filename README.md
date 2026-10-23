@@ -19,7 +19,7 @@ Chi tiết từng bước từ build tới BootROM → ứng dụng: [docs/quy-t
 | 5 | Root File System tối giản | `rootfs.ext4` |
 | 6 | Tích hợp trình điều khiển thiết bị (có sẵn + driver mẫu cho IP modem trên PL) | module `modem-regs.ko` |
 | 7 | Linux image triển khai được | `petalinux-sdimage.wic` (thẻ SD), tùy chọn QSPI |
-| 8 | Kiểm thử trên QEMU và trên board thật | `zynq-selftest` + báo cáo |
+| 8 | Kiểm thử trên board E316 thật | `zynq-selftest` + báo cáo |
 
 ## 2. Phần cứng mục tiêu
 
@@ -100,10 +100,18 @@ Lý do chọn 2021.1: XSA vàng của E316 và layer `meta-adi` 2021_R1 cùng n�
 ```
 NCKH/
 ├── README.md
-├── docs/quy-trinh-xay-dung.md     # quy trình chi tiết từng bước
-├── tasks/                          # plan + task list
+├── CLAUDE.md                       # bối cảnh dự án cho Claude Code
+├── docs/
+│   ├── quy-trinh-xay-dung.md       # quy trình chi tiết từng bước build + boot
+│   ├── lo-trinh.md                 # sơ đồ các bước, cần cài, cần học
+│   ├── petalinux.md                # giải thích PetaLinux cho người mới
+│   └── yocto.md                    # giải thích Yocto (gatesgarth) + đọc meta-modem
+├── tasks/                          # plan + task list + nhật ký
 ├── hw/
-│   └── e316/system.xsa             # xuất từ Vivado (người dùng cung cấp)
+│   └── e316/
+│       ├── create_project.tcl      # tạo project Vivado + block design (tái lập được)
+│       ├── e316.xdc                # ràng buộc chân (Ethernet RGMII, từ T6)
+│       └── system.xsa              # xuất từ Vivado
 ├── meta-modem/                      # layer Yocto dùng chung mọi board Zynq
 │   ├── conf/layer.conf
 │   ├── recipes-kernel/linux/
@@ -112,7 +120,6 @@ NCKH/
 │   ├── recipes-modules/modem-regs/ # driver mẫu cho IP thanh ghi modem
 │   └── recipes-apps/zynq-selftest/ # script kiểm thử trên board
 └── plnx/
-    ├── zc702/                      # project từ BSP ZC702 — chỉ để thử QEMU (không commit)
     └── e316/                       # project PetaLinux cho E316
         ├── project-spec/           # cấu hình + meta-user (commit)
         ├── components/             # sinh tự động (không commit)
@@ -192,7 +199,7 @@ PetaLinux sinh `system-top.dts`, `pcw.dtsi`, `pl.dtsi` trong `components/` — *
 | Mức | Môi trường | Nội dung |
 |-----|------------|----------|
 | Build | máy build | `petalinux-build` sạch từ đầu thành công; đủ các file trong `images/linux/` |
-| Boot | QEMU | kernel boot tới login prompt, mount được rootfs |
+| Boot | board E316 | log UART từ FSBL tới login prompt, mount được rootfs |
 | Chức năng | board E316 | `zynq-selftest` đạt hết các mục |
 | Hiệu năng | board E316 | thời gian boot, thông lượng Ethernet, băng thông DDR |
 | Ổn định | board E316 | chạy liên tục 24 giờ, khởi động lại 100 lần |
@@ -244,7 +251,7 @@ Layer `meta-modem` (kernel fragment, driver, ứng dụng kiểm thử) dùng l�
 | Lần build đầu cần mạng và lâu (1–2 giờ) | trễ lịch | chạy nền qua đêm; giữ `build/` và thư mục downloads giữa các lần build |
 | PetaLinux 2021.1 đã cũ (Ubuntu 20.04 hết hỗ trợ chuẩn 04/2025; AMD thay PetaLinux bằng EDF từ 2025.1) | không còn bản vá; tải gói Yocto từ mirror cũ có thể lỗi | giữ thư mục downloads/sstate; tùy biến để trong layer Yocto `meta-modem` nên chuyển sang bản mới được khi cần |
 | Tên/label IP modem trong `pl.dtsi` phụ thuộc thiết kế Vivado | `system-user.dtsi` tham chiếu sai label thì build DT lỗi | giữ phần IP dạng mẫu có chú thích, chỉ bật khi IP đã có trong thiết kế |
-| QEMU không mô phỏng PL | không kiểm thử được IP modem trên QEMU | kiểm thử IP trên board thật |
+| Không dùng QEMU (kiểm thẳng trên board) | không có môi trường thử khi chưa có board | snapshot ảnh boot vào `plnx/e316/deploy/` trước mỗi thay đổi lớn; khoanh vùng lỗi 3 lớp PCB / FPGA / Linux |
 | Front-end RF (vd. AD9361) cần driver và `libiio` riêng | ngoài phạm vi giai đoạn này | bổ sung ở giai đoạn phát triển chức năng modem |
 
 ## 9. Kế hoạch thực hiện
