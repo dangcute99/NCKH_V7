@@ -59,6 +59,9 @@ Kế hoạch: [plan.md](plan.md) · Task: [todo.md](todo.md)
 - T3: Vivado đang tải ~7,4/22,4 GB lúc cập nhật (khoảng 4 MB/s).
 - **T3 xong:** Vivado v2021.1 (SW Build 3247384) tại `/tools/Xilinx`, 27 GB, cài ~2 giờ; thử batch tạo project `xc7z020clg400-1` + `processing_system7` OK. Còn driver cáp JTAG (sudo, không chặn boot SD).
 - Driver cáp JTAG đã cài (3 rule udev `52-xilinx-*.rules`). Lần đầu lỗi rc=127 vì chạy `install_drivers` từ thư mục khác (script gọi file con bằng `./`); chạy từ thư mục của script thì được.
+- **Đính chính part:** E316 dùng `xc7z020clg400-2` (speed grade -2), không phải `-1` như ghi trước đó (lấy từ project học V1). Bằng chứng: cả 3 XSA của nhà sản xuất (`antsdr-fw-patch` v0.38 `e316.zip` — Vivado 2022.2; v0.39 `e310v2.zip` — 2023.2; `_HW/system_top.xsa` — 2021.1) đều `SPEEDGRADE="-2"`. Đã sửa README, CLAUDE.md, docs, todo, hướng dẫn T4.
+- **Đính chính swap:** máy build có swapfile 2 GB (đã đầy khi kiểm 23/10), không phải “chưa có swap”. Khuyến nghị tăng lên 16 GB trước lần build PetaLinux đầu.
+- Tải XSA mẫu của nhà sản xuất vào `hw/e316/vendor/` (không commit). Bản v0.38/v0.39 tạo bằng Vivado 2022.2/2023.2 nên **không nhập được vào PetaLinux 2021.1**; chỉ dùng đối chiếu.
 - Định hướng báo cáo: `docs/quy-trinh-xay-dung.md` thêm dòng *Kết quả thực tế* / *Vấn đề gặp & xử lý* cho mỗi bước (B0 đã điền), bảng kết quả khởi động; thêm `docs/bao-cao-dan-y.md` (cấu trúc báo cáo, nguồn, bằng chứng cần thu).
 
 **Đính chính mục 22/10**

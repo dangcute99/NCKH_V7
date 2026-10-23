@@ -13,3 +13,6 @@ hw/*/vivado/
 !tasks/logs/*.log
 vivado_pid*.str
 .Xil/
+
+# XSA mẫu của nhà sản xuất (MicroPhase) — tham khảo, giấy phép chưa rõ, repo public
+hw/*/vendor/

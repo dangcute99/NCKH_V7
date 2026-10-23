@@ -56,7 +56,7 @@ Quy ước: `$P` = `plnx/e316`; mỗi terminal PetaLinux chạy `source /opt/pkg
 
 **Acceptance criteria:**
 - [x] `vivado -version` in `v2021.1` (23/10)
-- [x] `vivado -mode batch -source <tcl tạo project rỗng xc7z020clg400-1>` chạy không lỗi (tạo được project + cell `processing_system7`)
+- [x] `vivado -mode batch -source <tcl tạo project rỗng xc7z020clg400-2>` chạy không lỗi (tạo được project + cell `processing_system7`)
 - [x] Dung lượng `/tools/Xilinx` ghi vào nhật ký (27 GB)
 
 **Verification:**
@@ -72,7 +72,7 @@ Quy ước: `$P` = `plnx/e316`; mỗi terminal PetaLinux chạy `source /opt/pkg
 
 ## Task 4: XSA tối thiểu cho E316 (PS: DDR, UART1, SD0)
 
-**Description:** Tạo project Vivado `hw/e316/vivado/` bằng script Tcl `hw/e316/create_project.tcl` (để tái lập được, không commit thư mục sinh ra). Block design chỉ có ZYNQ7 Processing System: part `xc7z020clg400-1`; DDR3 `MT41J256M16 RE-125`, bus 32-bit (thông số delay/board đối chiếu `system_bd.tcl` vàng trong `_ZynQ_Study/`, chỉ đọc); UART1 MIO 12–13 115200; SD0; tắt TTC0 và ngoại vi không dùng. Generate bitstream, Export Hardware kèm bitstream → `hw/e316/system.xsa`.
+**Description:** Tạo project Vivado `hw/e316/vivado/` bằng script Tcl `hw/e316/create_project.tcl` (để tái lập được, không commit thư mục sinh ra). Block design chỉ có ZYNQ7 Processing System: part `xc7z020clg400-2`; DDR3 `MT41J256M16 RE-125`, bus 32-bit (thông số delay/board đối chiếu `system_bd.tcl` vàng trong `_ZynQ_Study/`, chỉ đọc); UART1 MIO 12–13 115200; SD0; tắt TTC0 và ngoại vi không dùng. Generate bitstream, Export Hardware kèm bitstream → `hw/e316/system.xsa`.
 
 **Acceptance criteria:**
 - [ ] `hw/e316/create_project.tcl` chạy lại từ đầu ra cùng XSA (tái lập được)

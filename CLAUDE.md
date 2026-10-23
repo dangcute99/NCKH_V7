@@ -7,7 +7,7 @@ Repo tài liệu + layer Yocto để dựng Linux bằng PetaLinux cho Zynq-7000
 - Vivado / Vitis / **PetaLinux 2021.1** — không đổi phiên bản giữa chừng; Vivado và PetaLinux phải cùng bản.
 - Yocto **gatesgarth**: recipe dùng cú pháp `_append` / `_prepend` (chưa có `:append`), license `GPL-2.0` (chưa có `GPL-2.0-only`), `LAYERSERIES_COMPAT_modem = "gatesgarth"`.
 - Kernel `linux-xlnx` 5.10, U-Boot 2021.01. AD9361 cần `meta-adi` nhánh **2021_R1**.
-- Máy build: Ubuntu **20.04.6**, 12 luồng, 15 GB RAM, ~419 GB trống, chưa có swap. Vivado 2021.1 ML Standard (chỉ Zynq-7000) cài trên máy build tại `/tools/Xilinx` (xong 23/10, 27 GB; `source /tools/Xilinx/Vivado/2021.1/settings64.sh`); không chạy Vivado và `petalinux-build` cùng lúc.
+- Máy build: Ubuntu **20.04.6**, 12 luồng, 15 GB RAM, ~419 GB trống, swap 2 GB (nên tăng lên 16 GB trước build PetaLinux đầu). Vivado 2021.1 ML Standard (chỉ Zynq-7000) cài trên máy build tại `/tools/Xilinx` (xong 23/10, 27 GB; `source /tools/Xilinx/Vivado/2021.1/settings64.sh`); không chạy Vivado và `petalinux-build` cùng lúc.
 - Cài PetaLinux tại `/opt/pkg/petalinux/2021.1`; mỗi terminal: `source /opt/pkg/petalinux/2021.1/settings.sh /opt/pkg/petalinux/2021.1`.
 
 ## Cấu trúc
@@ -20,7 +20,7 @@ Repo tài liệu + layer Yocto để dựng Linux bằng PetaLinux cho Zynq-7000
 
 ## Sự thật về E316 (đã kiểm trên board trong lộ trình học)
 
-- `xc7z020clg400-1`, DDR3 `MT41J256M16 RE-125` 32-bit.
+- `xc7z020clg400-2`, DDR3 `MT41J256M16 RE-125` 32-bit.
 - Console UART1 MIO 12–13 (`0xE0001000`) → Linux `ttyPS0`, 115200; petalinux-config chọn `ps7_uart_1`.
 - Ethernet: GEM0 EMIO + `gmii_to_rgmii` (FCLK_CLK2 200 MHz), PHY RTL8211F @ MDIO 1, `phy-mode = "rgmii-id"`, tắt `gmii_to_rgmii_0`, converter `gmiitorgmii@8`.
 - Thiết kế tham khảo trong lộ trình học có hai XSA (bringup không AD9361; vàng `system_top.xsa` có `axi_ad9361`) — chỉ đọc để đối chiếu, project này tự làm XSA.

@@ -9,7 +9,7 @@ Dựng Linux nhúng cho ANTSDR E316 **từ đầu** bằng Vivado 2021.1 + PetaL
 ## Architecture Decisions
 
 - **Làm từ đầu; `_ZynQ_Study/` chỉ để tham khảo** (người dùng chốt 23/10). Không chép XSA, project Vivado hay image từ đó. Được đọc để đối chiếu thông số đã kiểm trên board: DDR `MT41J256M16 RE-125` 32-bit, UART1 MIO 12–13, chân + clock Ethernet (ENET0 EMIO, `gmii_to_rgmii`, FCLK_CLK2 200 MHz), công thức DT PHY RTL8211F.
-- **Vivado 2021.1 cài trên máy build** (thay quyết định 21/10). Lý do: làm XSA từ đầu cần sửa thiết kế nhiều lần; máy còn ~419 GB. Chỉ cài Vivado ML Standard + họ Zynq-7000 (~30 GB), không cài Vitis. Không chạy synthesis song song với `petalinux-build` (15 GB RAM, chưa có swap).
+- **Vivado 2021.1 cài trên máy build** (thay quyết định 21/10). Lý do: làm XSA từ đầu cần sửa thiết kế nhiều lần; máy còn ~419 GB. Chỉ cài Vivado ML Standard + họ Zynq-7000 (~30 GB), không cài Vitis. Không chạy synthesis song song với `petalinux-build` (15 GB RAM, swap 2 GB (nên tăng lên 16 GB trước build PetaLinux đầu)).
 - **XSA làm theo lát:** XSA đầu chỉ có PS (DDR, UART1, SD0) để boot; thêm Ethernet ở lát mạng; thêm IP AXI-Lite ở lát driver. Mỗi lần đổi XSA: `--get-hw-description` → `petalinux-package --boot` → chép lại `BOOT.BIN`.
 - **Bỏ ZC702 + QEMU, kiểm thẳng trên E316.** Đánh đổi: không có môi trường thử khi chưa có board; bù bằng snapshot `deploy/` trước mỗi thay đổi lớn và khoanh vùng 3 lớp PCB / FPGA / Linux.
 - **Driver `modem-regs` kiểm trên IP AXI-Lite tự làm** (thanh ghi version cố định + scratch), không qua BRAM trung gian.
@@ -90,7 +90,7 @@ T12 QSPI (tuỳ chọn, sau T7)
 | Token AMD của bộ cài Vivado hết hạn 30/10/2026 | Med | Cài T3 trước 30/10; quá hạn thì chạy lại `xsetup -b AuthTokenGen` (lần đầu từng lỗi do gõ sai mật khẩu) |
 | Mirror Yocto của 2021.1 đã cũ, build đầu lỗi tải gói | High | Build đầu ngay khi có XSA (T5); giữ `downloads/`, `sstate-cache/` |
 | Ethernet qua EMIO + `gmii_to_rgmii` sai clock/XDC → không link | Med | Tách thành lát riêng T6 sau khi boot ổn; đối chiếu XDC và FCLK_CLK2 200 MHz với tài liệu tham khảo |
-| 15 GB RAM, không swap: Vivado + PetaLinux cùng lúc hết RAM | Med | Chạy lần lượt; cân nhắc tạo swapfile 16 GB (người dùng quyết) |
+| 15 GB RAM, swap 2 GB: Vivado + PetaLinux cùng lúc hết RAM | Med | Chạy lần lượt; cân nhắc tạo swapfile 16 GB (người dùng quyết) |
 | Sửa đổi gatesgarth của `meta-modem` sai | Med | T8 tách riêng sau khi board chạy ổn |
 | Ghi nhầm thiết bị khi `dd` thẻ SD | High | `lsblk` trước/sau; người dùng xác nhận `/dev/sdX` |
 | Lịch 1 tuần không đủ khi làm từ đầu | High | Thứ tự cắt phạm vi ở trên; CP2 là mốc tối thiểu |
