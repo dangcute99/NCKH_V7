@@ -1,6 +1,6 @@
 # NCKH_V7 — Linux nhúng trên Zynq-7000 cho modem vệ tinh
 
-Repo tài liệu + layer Yocto để dựng Linux bằng PetaLinux cho Zynq-7000; board ví dụ: ANTSDR E316. Spec: [README.md](README.md). Quy trình chi tiết: [docs/quy-trinh-xay-dung.md](docs/quy-trinh-xay-dung.md). Lộ trình (sơ đồ, cần cài, cần học): [docs/lo-trinh.md](docs/lo-trinh.md). Giải thích PetaLinux cho người mới: [docs/petalinux.md](docs/petalinux.md). Kế hoạch / task / nhật ký: [tasks/](tasks/).
+Repo tài liệu + layer Yocto để dựng Linux bằng PetaLinux cho Zynq-7000; board ví dụ: ANTSDR E316. Spec: [README.md](README.md). Quy trình chi tiết: [docs/quy-trinh-xay-dung.md](docs/quy-trinh-xay-dung.md). Lộ trình (sơ đồ, cần cài, cần học): [docs/lo-trinh.md](docs/lo-trinh.md). Giải thích PetaLinux cho người mới: [docs/petalinux.md](docs/petalinux.md). Giải thích Yocto (gatesgarth) và đọc `meta-modem`: [docs/yocto.md](docs/yocto.md). Kế hoạch / task / nhật ký: [tasks/](tasks/).
 
 ## Phiên bản (chốt 23/10/2026, theo lộ trình học E316)
 
@@ -31,6 +31,11 @@ Repo tài liệu + layer Yocto để dựng Linux bằng PetaLinux cho Zynq-7000
 - Trả lời và viết tài liệu bằng tiếng Việt.
 - Đổi phiên bản / thông số phần cứng thì sửa đồng bộ README, docs, tasks/plan.md, tasks/todo.md, và **file này**.
 - Nhật ký `tasks/nhat-ky.md`: chỉ thêm mục mới theo ngày, không sửa mục cũ (đính chính ghi ở mục mới).
+- **Khi người dùng nói “update”** (người dùng chốt 23/10, áp dụng mọi lần, không cần hỏi lại):
+  1. Đồng bộ toàn dự án: rà README, `docs/*`, `tasks/plan.md` + `tasks/todo.md` (tick tiến độ thật), `tasks/nhat-ky.md` (mục ngày hôm nay), `CLAUDE.md`, `meta-modem/` cho khớp nhau (phiên bản, số task, tên layer, đường dẫn, trạng thái).
+  2. Không đưa `_ZynQ_Study/` và `graphs/` lên git.
+  3. Commit trên nhánh mới → push → mở PR → merge `--rebase` vào `main` → xoá nhánh → `main` local khớp `origin/main`. Tác giả commit `ntdang <nguyendang992002@gmail.com>` (máy chưa có `git config` user).
+  4. Báo lại link PR/commit và những gì đã đồng bộ.
 
 ## Tự động hóa
 

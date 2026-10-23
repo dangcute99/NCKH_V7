@@ -34,7 +34,7 @@ Thứ tự ở trục build (B) **ngược** với trục boot (R). File đượ
 | **Làm gì** | Cài gói host theo UG1144 (script `plnx-env-setup.sh` của AMD). Tạo thư mục cài cho user thường: `sudo mkdir -p /opt/pkg/petalinux/2021.1 && sudo chown -R $USER /opt/pkg`. Cài **không dùng root**: `./petalinux-v2021.1-final-installer.run -d /opt/pkg/petalinux/2021.1`. Mỗi terminal: `source /opt/pkg/petalinux/2021.1/settings.sh /opt/pkg/petalinux/2021.1` (truyền đủ đường dẫn, như lộ trình E316) |
 | **Đầu ra** | `/opt/pkg/petalinux/2021.1/` (~10 GB): các lệnh `petalinux-*`, toolchain, XSCT nội bộ, QEMU của Xilinx |
 | **Kiểm tra** | `which petalinux-build`; `petalinux-create --help` không lỗi |
-| **Trạng thái** | Chưa làm (Task 1) |
+| **Trạng thái** | **Xong 23/10** (T2): cài tại `/opt/pkg/petalinux/2021.1`, 13 GB |
 
 Nếu installer báo thiếu gói thì cài theo đúng danh sách nó in ra. Máy build hiện có `/bin/sh` là `dash`, nên trước khi cài phải chạy `sudo dpkg-reconfigure dash` và chọn **No** để `/bin/sh` trỏ tới bash.
 
@@ -48,7 +48,7 @@ Trước mọi `petalinux-config` (menu ncurses) chạy `stty rows 40 cols 120`,
 | **Làm gì** | Block design `ZYNQ7 Processing System`: cấu hình DDR, gán MIO cho UART/SD/QSPI/ENET/I2C, clock. Thêm IP modem trên PL nếu có. Generate bitstream → Export Hardware (kèm bitstream) |
 | **Đầu ra** | `hw/e316/system.xsa` (zip gồm `.bit`, `ps7_init.c/.tcl`, mô tả phần cứng `.hwh`) |
 | **Kiểm tra** | `unzip -l hw/e316/system.xsa` thấy `.bit` và `ps7_init*` |
-| **Trạng thái** | Chưa làm (Task 6) |
+| **Trạng thái** | Chưa làm: T4 (XSA chỉ PS), T6 (thêm Ethernet), T10 (thêm IP modem). Vivado đang cài (T3) |
 
 Mọi thông số phần cứng của board đều đi vào hệ thống qua file này. Nếu cấu hình DDR sai ở đây thì board sẽ chết ở R3, kể cả khi mọi bước build phía sau đều thành công. **Vivado phải cùng phiên bản với PetaLinux (2021.1).**
 
@@ -65,7 +65,7 @@ Mọi thông số phần cứng của board đều đi vào hệ thống qua fil
 | **PetaLinux làm gì bên dưới** | Chép `.xsa` vào `project-spec/hw-description/`; chạy XSCT để đọc phần cứng: danh sách ngoại vi PS, IP trên PL, địa chỉ, UART, bộ nhớ → sinh `project-spec/configs/config` và mở menu cấu hình hệ thống |
 | **Đầu ra** | Khung project `$P/` (`project-spec/`, `components/`, `config.project`) |
 | **Kiểm tra** | `ls $P/project-spec/hw-description/` thấy `.xsa`; menu hiện đúng tên UART/ethernet của thiết kế |
-| **Trạng thái** | Chưa làm (Task 7). Trước đó thử bằng BSP ZC702: `petalinux-create -t project -s xilinx-zc702-v2021.1-final.bsp` (Task 2) |
+| **Trạng thái** | Chưa làm (T5) |
 
 ### B3. Cấu hình hệ thống (`petalinux-config`)
 
@@ -92,7 +92,7 @@ Mọi thông số phần cứng của board đều đi vào hệ thống qua fil
 | **PetaLinux làm gì bên dưới** | Build recipe `u-boot-xlnx` (2021.01, defconfig `xilinx_zynq_virt`), sinh thêm `boot.scr` từ mẫu `u-boot-zynq-scr` |
 | **Đầu ra** | `images/linux/u-boot.elf`, `images/linux/boot.scr` |
 | **Kiểm tra** | `file images/linux/u-boot.elf` là ARM ELF |
-| **Trạng thái** | Chưa làm (Task 2 trên ZC702, Task 8 trên E316) |
+| **Trạng thái** | Chưa làm (T5) |
 
 U-Boot của Xilinx bật `CONFIG_OF_BOARD`: khi chạy, nó lấy Device Tree ở địa chỉ `0x100000` (`CONFIG_XILINX_OF_BOARD_DTB_ADDR`), nơi FSBL đặt sẵn từ `BOOT.BIN`. Nhờ vậy một bản build U-Boot dùng chung được cho mọi board Zynq-7000.
 
@@ -105,7 +105,7 @@ U-Boot của Xilinx bật `CONFIG_OF_BOARD`: khi chạy, nó lấy Device Tree �
 | **PetaLinux làm gì bên dưới** | Yocto trộn defconfig với các fragment, biên dịch kernel, đóng gói kernel và `system.dtb` vào ảnh FIT `image.ub` |
 | **Đầu ra** | `images/linux/zImage`, `images/linux/image.ub` |
 | **Kiểm tra** | Grep từng option của `modem.cfg` trong `.config` của kernel (`find build/tmp/work -path '*linux-xlnx*' -name .config`) |
-| **Trạng thái** | Chưa làm (Task 3) |
+| **Trạng thái** | Chưa làm (T8) |
 
 ### B6. Device Tree
 
@@ -115,7 +115,7 @@ U-Boot của Xilinx bật `CONFIG_OF_BOARD`: khi chạy, nó lấy Device Tree �
 | **PetaLinux làm gì bên dưới** | Chạy XSCT + `device-tree-xlnx` để sinh `system-top.dts`, `zynq-7000.dtsi`, `pcw.dtsi` (ngoại vi PS), `pl.dtsi` (IP trên PL) vào `components/plnx_workspace/device-tree/device-tree/`; ghép thêm `system-user.dtsi`; biên dịch bằng `dtc` |
 | **Đầu ra** | `images/linux/system.dtb` (nằm trong `image.ub` và trong `BOOT.BIN`) |
 | **Kiểm tra** | `dtc -I dtb -O dts images/linux/system.dtb | grep -A3 chosen`; có node ethernet, node IP modem |
-| **Trạng thái** | Chưa làm (Task 7) |
+| **Trạng thái** | Chưa làm: T6 (PHY Ethernet), T10 (node IP modem) |
 
 Nguyên tắc: **không sửa file trong `components/`**, vì chúng bị sinh lại mỗi lần build. Mọi chỉnh tay đặt trong `system-user.dtsi`, nhờ vậy xuất lại `.xsa` không làm mất phần đã sửa.
 
@@ -138,7 +138,7 @@ Không dùng `/delete-node/` cho converter (làm sai thứ tự probe).
 | **PetaLinux làm gì bên dưới** | Yocto build từng gói (BusyBox, glibc, ...), cài vào ảnh rootfs |
 | **Đầu ra** | `images/linux/rootfs.ext4`, `rootfs.tar.gz` |
 | **Kiểm tra** | `debugfs -R 'ls -l /usr/bin' images/linux/rootfs.ext4`; tìm `modem-regs.ko` trong `/lib/modules/` |
-| **Trạng thái** | Chưa làm (Task 4, Task 5) |
+| **Trạng thái** | Chưa làm: T7 (rootfs EXT4), T9 (gói + zynq-selftest), T10 (driver `modem-regs`) |
 
 ### B8. Build và đóng gói
 
@@ -160,7 +160,7 @@ petalinux-package --wic
 | **PetaLinux làm gì bên dưới** | `petalinux-build` chạy `bitbake` cho FSBL, U-Boot, DT, kernel, rootfs. `--boot` sinh file `.bif` rồi gọi `bootgen`. `--wic` dùng Yocto `wic` tạo ảnh thẻ SD từ các file trong `images/linux/` |
 | **Đầu ra** | `BOOT.BIN`, `petalinux-sdimage.wic` (cùng các file ở bảng dưới) |
 | **Kiểm tra** | `bootgen -arch zynq -read images/linux/BOOT.BIN` liệt kê FSBL, bitstream, U-Boot, DTB; `sfdisk -l images/linux/petalinux-sdimage.wic` thấy 2 phân vùng |
-| **Trạng thái** | Chưa làm (Task 2 trên ZC702, Task 8 trên E316) |
+| **Trạng thái** | Chưa làm: T5 (`BOOT.BIN` + `image.ub`), T7 (`.wic`) |
 
 ```
 BOOT.BIN (bootgen)                         petalinux-sdimage.wic
