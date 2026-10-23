@@ -5,7 +5,7 @@ Các bước dựng Linux nhúng cho modem vệ tinh trên ANTSDR E316 **từ đ
 | | |
 |---|---|
 | Công cụ | Vivado 2021.1 ML Standard (chỉ Zynq-7000) + PetaLinux 2021.1, **cùng trên máy build** |
-| Máy build | Ubuntu 20.04.6, 12 luồng, 15 GB RAM, chưa có swap |
+| Máy build | Ubuntu 20.04.6, 12 luồng, 15 GB RAM, swap 2 GB (nên tăng lên 16 GB trước build PetaLinux đầu) |
 | Nguyên tắc | Làm từ đầu; `_ZynQ_Study/` chỉ để đối chiếu thông số. Mỗi task là một lát dọc kiểm thẳng trên board |
 | Cập nhật | 23/10/2026 |
 
@@ -101,7 +101,7 @@ sudo usermod -aG dialout "$USER"    # đăng xuất/nhập lại để có hiệ
 **T3 · Cài Vivado 2021.1** ✅
 - **Làm:** cài batch theo `install_config.txt`; xong thì cài driver cáp JTAG: `cd /tools/Xilinx/Vivado/2021.1/data/xicom/cable_drivers/lin64/install_script/install_drivers && sudo ./install_drivers`. Không chạy cùng lúc với `petalinux-build`.
 - **Học:** cách mở Vivado (`source /tools/Xilinx/Vivado/2021.1/settings64.sh`), chế độ GUI và chế độ batch Tcl.
-- **Xong khi:** `vivado -version` in `v2021.1`; tạo được project rỗng cho `xc7z020clg400-1` bằng Tcl.
+- **Xong khi:** `vivado -version` in `v2021.1`; tạo được project rỗng cho `xc7z020clg400-2` bằng Tcl.
 
 **T4 · XSA tối thiểu cho E316 (chỉ PS)**
 - **Làm:** viết `hw/e316/create_project.tcl`: block design chỉ có ZYNQ7 PS; DDR3 `MT41J256M16 RE-125` 32-bit; UART1 MIO 12–13; SD0; tắt ngoại vi không dùng. Generate bitstream, Export Hardware kèm bitstream → `hw/e316/system.xsa`. Ghi bảng đối chiếu thông số với thiết kế tham khảo vào `hw/e316/README.md`.

@@ -34,7 +34,7 @@ Các giá trị dưới đây lấy từ lộ trình E316 (`_ZynQ_Study/`): đ�
 
 | Thông số | Giá trị | Ảnh hưởng tới |
 |----------|---------|---------------|
-| SoC | XC7Z020 `xc7z020clg400-1` (Zynq-7000, 2× Cortex-A9) | thiết kế Vivado, FSBL |
+| SoC | XC7Z020 `xc7z020clg400-2` (Zynq-7000, 2× Cortex-A9) | thiết kế Vivado, FSBL |
 | DDR | DDR3 `MT41J256M16 RE-125`, bus 32-bit | cấu hình PS trong Vivado |
 | Boot | thẻ SD (đã dùng); QSPI có bật trong PS, chưa dùng | boot mode, phân vùng QSPI |
 | Console | UART1, MIO 12–13, `0xE0001000` → Linux `ttyPS0`, 115200 8N1, cổng USB Type-C | `petalinux-config` → serial |
@@ -248,7 +248,7 @@ Layer `meta-modem` (kernel fragment, driver, ứng dụng kiểm thử) dùng l�
 | `/bin/sh` trên máy build đang là `dash`, PetaLinux cần `bash` | bộ cài / build báo lỗi | `sudo dpkg-reconfigure dash` → chọn **No** |
 | Vivado và PetaLinux phải cùng phiên bản | `.xsa` lệch phiên bản → lỗi khi `--get-hw-description` | dùng 2021.1 cho cả hai |
 | Ổ đĩa: PetaLinux (~10 GB) + mỗi project build (~40–50 GB) + downloads/sstate (~10–20 GB) | máy build còn ~420 GB, đủ cho vài project | vẫn bật `rm_work`; giữ chung thư mục downloads/sstate giữa các project |
-| XSA tự làm từ đầu: cấu hình DDR sai → treo sau banner FSBL | board không boot | XSA đầu chỉ có PS; đối chiếu thông số DDR/MIO với `system_bd.tcl` tham khảo; Vivado và PetaLinux không chạy cùng lúc (15 GB RAM, chưa có swap) |
+| XSA tự làm từ đầu: cấu hình DDR sai → treo sau banner FSBL | board không boot | XSA đầu chỉ có PS; đối chiếu thông số DDR/MIO với `system_bd.tcl` tham khảo; Vivado và PetaLinux không chạy cùng lúc (15 GB RAM, swap 2 GB (nên tăng lên 16 GB trước build PetaLinux đầu)) |
 | Lần build đầu cần mạng và lâu (1–2 giờ) | trễ lịch | chạy nền qua đêm; giữ `build/` và thư mục downloads giữa các lần build |
 | PetaLinux 2021.1 đã cũ (Ubuntu 20.04 hết hỗ trợ chuẩn 04/2025; AMD thay PetaLinux bằng EDF từ 2025.1) | không còn bản vá; tải gói Yocto từ mirror cũ có thể lỗi | giữ thư mục downloads/sstate; tùy biến để trong layer Yocto `meta-modem` nên chuyển sang bản mới được khi cần |
 | Tên/label IP modem trong `pl.dtsi` phụ thuộc thiết kế Vivado | `system-user.dtsi` tham chiếu sai label thì build DT lỗi | giữ phần IP dạng mẫu có chú thích, chỉ bật khi IP đã có trong thiết kế |
