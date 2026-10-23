@@ -52,6 +52,9 @@ Kế hoạch: [plan.md](plan.md) · Task: [todo.md](todo.md)
 - **Đổi phiên bản 2023.2 → 2021.1** theo lộ trình E316: sửa README, docs, plan, todo; sửa layer `meta-nckh` cho Yocto gatesgarth (`LAYERSERIES_COMPAT`, cú pháp `_append`, license `GPL-2.0`).
 - Cập nhật README §2.2 bằng thông số E316 đã kiểm trên board (chip, DDR, UART1 → `ttyPS0`, PHY RTL8211F `rgmii-id`); docs B6 thêm công thức DT Ethernet của Lab 8.
 
+- **T2 xong:** PetaLinux 2021.1 cài tại `/opt/pkg/petalinux/2021.1` (13 GB), `petalinux-*` chạy được. Gói host đã cài; `/bin/sh` đã đổi sang bash (`readlink -f /bin/sh` → `/usr/bin/bash`); cảnh báo thiếu tftp server bỏ qua (boot SD).
+- **T1 xong:** 33 gói, bash, `/tools/Xilinx`, nhóm `dialout`, token AMD (hạn 30/10). **T3 bắt đầu:** cài Vivado ML Standard 2021.1 chỉ Zynq-7000 bằng `xsetup -b Install` chạy nền.
+
 **Đính chính mục 22/10**
 - Máy build thực tế: **Ubuntu 20.04.6**, kernel 5.15, 12 luồng, 15 GB RAM, **~419 GB trống**. Ghi "22.04.5, 80 GB" hôm 22/10 là sai. `/bin/sh` vẫn là dash; PetaLinux chưa cài.
 

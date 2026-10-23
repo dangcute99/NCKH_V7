@@ -36,9 +36,9 @@ T12 QSPI (tuỳ chọn, sau T7)
 ## Task List
 
 ### Phase 1: Công cụ + đường boot tối thiểu
-- [ ] T1: Máy build sẵn sàng *(người dùng)*
-- [ ] T2: Cài PetaLinux 2021.1
-- [ ] T3: Cài Vivado 2021.1 (ML Standard, Zynq-7000)
+- [x] T1: Máy build sẵn sàng (23/10)
+- [x] T2: Cài PetaLinux 2021.1 (23/10)
+- [ ] T3: Cài Vivado 2021.1 (ML Standard, Zynq-7000) — đang cài (bắt đầu 23/10 chiều)
 - [ ] T4: XSA tối thiểu cho E316 (PS: DDR, UART1, SD0)
 - [ ] T5: E316 boot tới login qua UART (INITRAMFS)
 
@@ -87,7 +87,7 @@ T12 QSPI (tuỳ chọn, sau T7)
 | Risk | Impact | Mitigation |
 |------|--------|------------|
 | Cấu hình DDR sai trong XSA tự làm → treo sau banner FSBL | High | Đối chiếu từng thông số DDR với `system_bd.tcl` vàng (chỉ đọc); kiểm ở T5 với XSA chỉ có PS trước khi thêm PL |
-| Chưa có bộ cài PetaLinux / Vivado 2021.1 (cần tài khoản AMD) | High | Người dùng tải và tạo token trong T1; T2, T3 bị chặn tới khi có |
+| Token AMD của bộ cài Vivado hết hạn 30/10/2026 | Med | Cài T3 trước 30/10; quá hạn thì chạy lại `xsetup -b AuthTokenGen` (lần đầu từng lỗi do gõ sai mật khẩu) |
 | Mirror Yocto của 2021.1 đã cũ, build đầu lỗi tải gói | High | Build đầu ngay khi có XSA (T5); giữ `downloads/`, `sstate-cache/` |
 | Ethernet qua EMIO + `gmii_to_rgmii` sai clock/XDC → không link | Med | Tách thành lát riêng T6 sau khi boot ổn; đối chiếu XDC và FCLK_CLK2 200 MHz với tài liệu tham khảo |
 | 15 GB RAM, không swap: Vivado + PetaLinux cùng lúc hết RAM | Med | Chạy lần lượt; cân nhắc tạo swapfile 16 GB (người dùng quyết) |

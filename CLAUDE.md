@@ -1,6 +1,6 @@
 # NCKH_V7 — Linux nhúng trên Zynq-7000 cho modem vệ tinh
 
-Repo tài liệu + layer Yocto để dựng Linux bằng PetaLinux cho Zynq-7000; board ví dụ: ANTSDR E316. Spec: [README.md](README.md). Quy trình chi tiết: [docs/quy-trinh-xay-dung.md](docs/quy-trinh-xay-dung.md). Lộ trình (sơ đồ, cần cài, cần học): [docs/lo-trinh.md](docs/lo-trinh.md). Kế hoạch / task / nhật ký: [tasks/](tasks/).
+Repo tài liệu + layer Yocto để dựng Linux bằng PetaLinux cho Zynq-7000; board ví dụ: ANTSDR E316. Spec: [README.md](README.md). Quy trình chi tiết: [docs/quy-trinh-xay-dung.md](docs/quy-trinh-xay-dung.md). Lộ trình (sơ đồ, cần cài, cần học): [docs/lo-trinh.md](docs/lo-trinh.md). Giải thích PetaLinux cho người mới: [docs/petalinux.md](docs/petalinux.md). Kế hoạch / task / nhật ký: [tasks/](tasks/).
 
 ## Phiên bản (chốt 23/10/2026, theo lộ trình học E316)
 
