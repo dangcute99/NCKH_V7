@@ -19,7 +19,7 @@ flowchart TD
     T1["✅ 👤 T1 Máy build sẵn sàng"]
     T2["✅ T2 Cài PetaLinux 2021.1"]
     T3["✅ T3 Cài Vivado 2021.1"]
-    T4["T4 XSA tối thiểu (PS: DDR, UART1, SD0)"]
+    T4["✅ T4 XSA tối thiểu (PS: DDR, UART1, SD0)"]
     T5["T5 E316 boot tới login (INITRAMFS)"]
   end
   CP1{{"◆ CP1 Login UART bằng XSA + image tự làm"}}

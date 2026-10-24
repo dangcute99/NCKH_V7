@@ -79,3 +79,17 @@ Kế hoạch: [plan.md](plan.md) · Task: [todo.md](todo.md)
 **Việc tiếp theo**
 - Người dùng: đổi dash → bash, tải bộ cài PetaLinux 2021.1 + BSP ZC702 2021.1.
 - Claude: T1 cài PetaLinux, T2 build ZC702 + QEMU; kiểm layer `meta-nckh` build được trên 2021.1.
+
+---
+
+## Thứ Bảy 24/10/2026
+
+**Đã làm**
+- **T4 xong:** viết `hw/e316/create_project.tcl` (tạo project `xc7z020clg400-2`, PS7 theo bảng thông số, validate, wrapper, bitstream, `write_hw_platform`) thay cho thao tác GUI. Chạy batch từ thư mục trống: 1 phút 55 giây, RAM đỉnh 2,2 GB, không lỗi/critical warning.
+- `hw/e316/system.xsa` (258 KB) có `system.bit`, `ps7_init*`, `system.hwh`; đối chiếu `.hwh` 38/38 tham số khớp bảng mục 1 README phần cứng. PL dùng 0 LUT/FF/BRAM/DSP.
+- Log: `tasks/logs/t4-vivado.log`, `tasks/logs/t4-utilization.rpt`.
+- Chạy lần 2 để kiểm tái lập (xoá `vivado/`, 2 phút 2 giây): `ps7_init*` giống từng byte, 876 tham số PCW giống, `system.bit` chỉ khác 4 byte giờ trong header → script tái lập được. Log `tasks/logs/t4-vivado-run2.log`. Điền *Kết quả thực tế* B1 trong `docs/quy-trinh-xay-dung.md` và mục 4 `hw/e316/README.md`.
+
+**Việc tiếp theo**
+- Người dùng: chụp hình block design/MIO/DDR cho báo cáo (mở `hw/e316/vivado/e316.xpr`); nên tăng swap lên 16 GB trước T5.
+- Claude: T5 — tạo project PetaLinux `plnx/e316`, nhập XSA, build INITRAMFS (cần người dùng cho phép chạy `petalinux-*`).

@@ -51,6 +51,8 @@ Nguồn đối chiếu: `_ZynQ_Study/_ZynQ_Study/_HW/system_bd.tcl` (dòng ~39�
 
 ## 2. Hướng dẫn làm bằng giao diện Vivado (T4)
 
+> Cách nhanh (đã dùng cho T4): `cd hw/e316 && vivado -mode batch -source create_project.tcl` làm toàn bộ Bước 2–8. Các bước GUI dưới đây dùng để hiểu thiết kế và chụp hình (Bước 9) — mở `vivado/e316.xpr` sau khi chạy script.
+
 **Trước khi bắt đầu:** không chạy `petalinux-build` song song (máy 15 GB RAM, swap 2 GB).
 
 ### Bước 1. Mở Vivado
@@ -142,4 +144,6 @@ So từng giá trị với bảng mục 1; khớp hết thì T4 đạt và chuy�
 
 ## 4. Kết quả thực tế
 
-*(điền sau T4: thời gian synthesis/implementation, utilization, kết quả đối chiếu `.hwh`, vấn đề gặp)*
+- **Kết quả:** Vivado 2021.1 batch `create_project.tcl` (24/10/2026, thư mục project trống, `-jobs 6`): tổng **1 phút 55 giây** từ tạo project tới `write_hw_platform` (synth ~14 s, impl + bitstream ~1,5 phút), RAM đỉnh 2,2 GB. Tài nguyên PL: 0 LUT, 0 FF, 0 BRAM, 0 DSP (chỉ PS). `system.xsa` 258 KB gồm `system.bit`, `ps7_init.c/.h/.tcl`, `ps7_init_gpl.*`, `system.hwh`. Đối chiếu `.hwh`: **toàn bộ 38 tham số khớp bảng mục 1** (part `7z020` `-2`, DDR, clock, UART1, SD0, ngoại vi tắt, `DDR_RAM_HIGHADDR` = `0x3FFFFFFF`). Log: `tasks/logs/t4-vivado.log`, `tasks/logs/t4-utilization.rpt`.
+- **Tái lập** (chạy lần 2, xoá `vivado/`, 2 phút 2 giây): 7 file `ps7_init*`/`sysdef.xml` giống từng byte, 876 tham số `PCW_*` trong `.hwh` giống hệt, `system.bit` chỉ khác 4 byte (giờ tạo trong header); phần khác chỉ là dấu thời gian (`.hwh`, `xsa.json`, `xsa.xml`) và metadata hiển thị block design (`system.bda`). Log lần 2: `tasks/logs/t4-vivado-run2.log`.
+- **Vấn đề gặp & xử lý:** Không có lỗi hay critical warning. 3 warning vô hại: `Boardtcl 53-1` (không đặt board part — E316 không có board file), `BD 5-700`/`BD 5-699` (chưa có address space vì `M_AXI_GP0` tắt). Script viết tay thay cho thao tác GUI + *Write Tcl* để tái lập ngay từ đầu; bitstream có dấu thời gian nên so sánh hai lần build theo nội dung từng file trong `.xsa`, không bằng checksum `.xsa`.
