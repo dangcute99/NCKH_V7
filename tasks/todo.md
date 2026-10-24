@@ -75,13 +75,13 @@ Quy ước: `$P` = `plnx/e316`; mỗi terminal PetaLinux chạy `source /opt/pkg
 **Description:** Tạo project Vivado `hw/e316/vivado/` bằng script Tcl `hw/e316/create_project.tcl` (để tái lập được, không commit thư mục sinh ra). Block design chỉ có ZYNQ7 Processing System: part `xc7z020clg400-2`; DDR3 `MT41J256M16 RE-125`, bus 32-bit (thông số delay/board đối chiếu `system_bd.tcl` vàng trong `_ZynQ_Study/`, chỉ đọc); UART1 MIO 12–13 115200; SD0; tắt TTC0 và ngoại vi không dùng. Generate bitstream, Export Hardware kèm bitstream → `hw/e316/system.xsa`.
 
 **Acceptance criteria:**
-- [ ] `hw/e316/create_project.tcl` chạy lại từ đầu ra cùng XSA (tái lập được)
-- [ ] `unzip -l hw/e316/system.xsa` có `.bit`, `ps7_init.c/.tcl`, `.hwh`
-- [ ] Bảng đối chiếu thông số DDR/MIO (của mình vs tham khảo) ghi trong `hw/e316/README.md`
+- [x] `hw/e316/create_project.tcl` chạy lại từ đầu ra cùng XSA (24/10, 2 lần: `ps7_init*` giống từng byte, 876 tham số PCW giống, bit chỉ khác dấu thời gian)
+- [x] `unzip -l hw/e316/system.xsa` có `.bit`, `ps7_init.c/.tcl`, `.hwh`
+- [x] Bảng đối chiếu thông số DDR/MIO (của mình vs tham khảo) ghi trong `hw/e316/README.md`
 
 **Verification:**
-- [ ] Build succeeds: `vivado -mode batch -source hw/e316/create_project.tcl` tới bước write_hw_platform
-- [ ] Manual check: `grep -E 'PCW_UART1|PCW_UIPARAM_DDR_PARTNO|PCW_SD0' ` trong `.hwh` khớp bảng đối chiếu
+- [x] Build succeeds: `vivado -mode batch -source hw/e316/create_project.tcl` tới bước write_hw_platform
+- [x] Manual check (38/38 tham số khớp; log `tasks/logs/t4-vivado.log`): `grep -E 'PCW_UART1|PCW_UIPARAM_DDR_PARTNO|PCW_SD0' ` trong `.hwh` khớp bảng đối chiếu
 
 **Dependencies:** T3
 

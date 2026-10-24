@@ -39,7 +39,7 @@ T12 QSPI (tuỳ chọn, sau T7)
 - [x] T1: Máy build sẵn sàng (23/10)
 - [x] T2: Cài PetaLinux 2021.1 (23/10)
 - [x] T3: Cài Vivado 2021.1 (ML Standard, Zynq-7000) (23/10, kèm driver cáp JTAG)
-- [ ] T4: XSA tối thiểu cho E316 (PS: DDR, UART1, SD0)
+- [x] T4: XSA tối thiểu cho E316 (PS: DDR, UART1, SD0) (24/10, script Tcl batch, tái lập 2 lần)
 - [ ] T5: E316 boot tới login qua UART (INITRAMFS)
 
 ### Checkpoint 1

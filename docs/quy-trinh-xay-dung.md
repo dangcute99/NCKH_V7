@@ -52,9 +52,9 @@ Trước mọi `petalinux-config` (menu ncurses) chạy `stty rows 40 cols 120`,
 | **Làm gì** | Block design `ZYNQ7 Processing System`: cấu hình DDR, gán MIO cho UART/SD/QSPI/ENET/I2C, clock. Thêm IP modem trên PL nếu có. Generate bitstream → Export Hardware (kèm bitstream) |
 | **Đầu ra** | `hw/e316/system.xsa` (zip gồm `.bit`, `ps7_init.c/.tcl`, mô tả phần cứng `.hwh`) |
 | **Kiểm tra** | `unzip -l hw/e316/system.xsa` thấy `.bit` và `ps7_init*` |
-| **Tiến độ** | Chưa làm: T4 (XSA chỉ PS), T6 (thêm Ethernet), T10 (thêm IP modem) |
-| **Kết quả thực tế** | *(điền sau T4: bảng thông số PS đã đặt, tài nguyên PL dùng, thời gian synthesis/implementation)* |
-| **Vấn đề gặp & xử lý** | *(điền sau T4, T6, T10)* |
+| **Tiến độ** | T4 xong 24/10 (XSA chỉ PS); chưa làm: T6 (thêm Ethernet), T10 (thêm IP modem) |
+| **Kết quả thực tế** | T4: Vivado 2021.1 batch `create_project.tcl` (24/10/2026, thư mục project trống, `-jobs 6`): tổng **1 phút 55 giây** từ tạo project tới `write_hw_platform` (synth ~14 s, impl + bitstream ~1,5 phút), RAM đỉnh 2,2 GB. Tài nguyên PL: 0 LUT, 0 FF, 0 BRAM, 0 DSP (chỉ PS). `system.xsa` 258 KB gồm `system.bit`, `ps7_init.c/.h/.tcl`, `ps7_init_gpl.*`, `system.hwh`. Đối chiếu `.hwh`: **toàn bộ 38 tham số khớp bảng mục 1** (part `7z020` `-2`, DDR, clock, UART1, SD0, ngoại vi tắt, `DDR_RAM_HIGHADDR` = `0x3FFFFFFF`). Log: `tasks/logs/t4-vivado.log`, `tasks/logs/t4-utilization.rpt`. **Tái lập** (chạy lần 2, xoá `vivado/`, 2 phút 2 giây): 7 file `ps7_init*`/`sysdef.xml` giống từng byte, 876 tham số `PCW_*` trong `.hwh` giống hệt, `system.bit` chỉ khác 4 byte (giờ tạo trong header); phần khác chỉ là dấu thời gian (`.hwh`, `xsa.json`, `xsa.xml`) và metadata hiển thị block design (`system.bda`). Log lần 2: `tasks/logs/t4-vivado-run2.log`. Bảng thông số PS: `hw/e316/README.md` mục 1 |
+| **Vấn đề gặp & xử lý** | T4: Không có lỗi hay critical warning. 3 warning vô hại: `Boardtcl 53-1` (không đặt board part — E316 không có board file), `BD 5-700`/`BD 5-699` (chưa có address space vì `M_AXI_GP0` tắt). Script viết tay thay cho thao tác GUI + *Write Tcl* để tái lập ngay từ đầu; bitstream có dấu thời gian nên so sánh hai lần build theo nội dung từng file trong `.xsa`, không bằng checksum `.xsa`. *(T6, T10: điền sau)* |
 
 Mọi thông số phần cứng của board đều đi vào hệ thống qua file này. Nếu cấu hình DDR sai ở đây thì board sẽ chết ở R3, kể cả khi mọi bước build phía sau đều thành công. **Vivado phải cùng phiên bản với PetaLinux (2021.1).**
 
